@@ -1,0 +1,14 @@
+<div class="overlay" *ngIf="visible">
+  <div class="overlay-content">
+    <div class="spinner-wrapper">
+      <div class="spinner-ring"></div>
+      <ion-icon name="sparkles-outline" class="sparkle-icon"></ion-icon>
+    </div>
+    <p class="loading-message">{{ currentMessage }}</p>
+    <div class="progress-dots">
+      <span class="dot"></span>
+      <span class="dot"></span>
+      <span class="dot"></span>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,22 @@
+# --- Dependencies ---
+**/node_modules/
+
+# --- Backend (trial-room-api) ---
+**/dist/
+**/*.log
+.env
+.env.local
+
+# --- Frontend (trial-room-app) ---
+**/.angular/
+**/www/
+**/browser/
+**/server/
+/trial-room-app/dist/
+/trial-room-app/out-tsc/
+
+# --- OS/IDE Files ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

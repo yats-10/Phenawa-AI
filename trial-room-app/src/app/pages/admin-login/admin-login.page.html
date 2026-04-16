@@ -1,0 +1,52 @@
+<ion-content class="admin-login-content" [fullscreen]="true">
+  <div class="login-wrapper">
+    <div class="logo-section">
+      <span class="logo-emoji">🛡️</span>
+      <h1 class="app-title">Admin Panel</h1>
+      <p class="app-subtitle">Phenawa AI Management</p>
+    </div>
+
+    <div class="login-card">
+      <div class="input-group">
+        <label class="input-label">Admin Username</label>
+        <input
+          class="text-input"
+          type="text"
+          placeholder="Enter admin username"
+          [(ngModel)]="username"
+          [disabled]="isLoading"
+          (keyup.enter)="login()"
+        />
+      </div>
+
+      <div class="input-group">
+        <label class="input-label">Password</label>
+        <div class="password-row">
+          <input
+            class="text-input"
+            [type]="showPassword ? 'text' : 'password'"
+            placeholder="Enter password"
+            [(ngModel)]="password"
+            [disabled]="isLoading"
+            (keyup.enter)="login()"
+          />
+          <button class="eye-btn" (click)="showPassword = !showPassword">
+            {{ showPassword ? '🙈' : '👁️' }}
+          </button>
+        </div>
+      </div>
+
+      <div class="error-box" *ngIf="errorMessage">
+        {{ errorMessage }}
+      </div>
+
+      <button
+        class="login-btn"
+        [disabled]="!username || !password || isLoading"
+        (click)="login()"
+      >
+        {{ isLoading ? 'Signing in...' : 'Admin Sign In' }}
+      </button>
+    </div>
+  </div>
+</ion-content>

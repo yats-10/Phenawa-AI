@@ -1,0 +1,46 @@
+<ion-card class="upload-card">
+  <ion-card-content>
+    <div class="card-title">{{ title }}</div>
+
+    <!-- Preview -->
+    <div class="preview-container" *ngIf="previewUrl">
+      <img [src]="previewUrl" alt="Selected image" class="preview-image" />
+      <div class="fabric-name" *ngIf="fabricName">{{ fabricName }}</div>
+      <button class="clear-btn" (click)="clear()">
+        <ion-icon name="close-circle-outline"></ion-icon>
+      </button>
+    </div>
+
+    <!-- Placeholder -->
+    <div class="placeholder" *ngIf="!previewUrl">
+      <ion-icon
+        [name]="mode === 'person' ? 'person-outline' : 'color-palette-outline'"
+        class="placeholder-icon"
+      ></ion-icon>
+      <p class="placeholder-text">
+        {{ mode === 'person' ? 'Take or select customer photo' : 'Take or select fabric photo' }}
+      </p>
+    </div>
+
+    <!-- Buttons -->
+    <div class="button-row">
+      <ion-button size="small" fill="outline" (click)="captureFromCamera()">
+        <ion-icon slot="start" name="camera-outline"></ion-icon>
+        Camera
+      </ion-button>
+      <ion-button size="small" fill="outline" (click)="captureFromGallery()">
+        <ion-icon slot="start" name="images-outline"></ion-icon>
+        Gallery
+      </ion-button>
+      <ion-button
+        *ngIf="showCatalogue"
+        size="small"
+        fill="solid"
+        color="secondary"
+        (click)="openCatalogue.emit()"
+      >
+        My Catalogue
+      </ion-button>
+    </div>
+  </ion-card-content>
+</ion-card>

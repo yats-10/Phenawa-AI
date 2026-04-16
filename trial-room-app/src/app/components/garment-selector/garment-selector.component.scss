@@ -1,0 +1,27 @@
+.garment-selector {
+  padding: 0 4px;
+}
+
+.group-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ion-color-medium);
+  margin: 8px 4px 4px;
+}
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-bottom: 4px;
+
+  ion-chip {
+    --border-radius: 20px;
+    font-size: 0.85rem;
+    height: 32px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+}

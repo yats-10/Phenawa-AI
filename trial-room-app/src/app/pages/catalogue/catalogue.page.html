@@ -1,0 +1,84 @@
+<ion-content class="catalogue-content" [fullscreen]="true">
+
+  <!-- Custom Header -->
+  <div class="page-header">
+    <button class="back-btn" (click)="goBack()">← Back</button>
+    <h1 class="page-title">🎨 My Fabrics</h1>
+    <button class="add-btn" (click)="openAddModal()">＋ Add</button>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-center" *ngIf="isLoading">
+    <div class="spinner"></div>
+  </div>
+
+  <!-- Empty state -->
+  <div class="empty-state" *ngIf="!isLoading && fabrics.length === 0">
+    <span class="empty-emoji">🧵</span>
+    <p class="empty-title">No fabrics saved yet</p>
+    <p class="empty-sub">Add your first fabric to get started</p>
+    <button class="empty-btn" (click)="openAddModal()">＋ Add Fabric</button>
+  </div>
+
+  <!-- Grid -->
+  <div class="fabric-grid" *ngIf="!isLoading && fabrics.length > 0">
+    <div
+      class="fabric-card"
+      *ngFor="let fabric of fabrics"
+      (click)="showFabricOptions(fabric)"
+    >
+      <img [src]="'data:image/jpeg;base64,' + fabric.imageBase64" [alt]="fabric.name" class="fabric-img" />
+      <div class="fabric-info">
+        <p class="fabric-name">{{ fabric.name }}</p>
+        <p class="fabric-date">{{ fabric.createdAt | date:'mediumDate' }}</p>
+      </div>
+    </div>
+  </div>
+
+</ion-content>
+
+<!-- Add Fabric Overlay -->
+<div class="modal-overlay" *ngIf="showAddModal" (click)="showAddModal = false">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Add New Fabric</h2>
+      <button class="modal-close" (click)="showAddModal = false">✕</button>
+    </div>
+
+    <div class="add-form">
+      <div class="input-group">
+        <label class="input-label">Fabric Name</label>
+        <input
+          class="text-input"
+          type="text"
+          placeholder="e.g. Blue Cotton Check"
+          [(ngModel)]="newFabricName"
+        />
+      </div>
+
+      <div class="photo-section">
+        <div class="preview-box" *ngIf="newFabricPreview">
+          <img [src]="newFabricPreview" alt="Fabric preview" />
+          <button class="clear-preview" (click)="newFabricPreview = null; newFabricBase64 = ''">✕</button>
+        </div>
+        <div class="photo-placeholder" *ngIf="!newFabricPreview">
+          <span class="placeholder-emoji">🖼️</span>
+          <p>Select fabric photo</p>
+        </div>
+
+        <div class="photo-buttons">
+          <button class="photo-btn" (click)="pickPhoto(CameraSource.Camera)">📷 Camera</button>
+          <button class="photo-btn" (click)="pickPhoto(CameraSource.Photos)">🖼️ Gallery</button>
+        </div>
+      </div>
+
+      <button
+        class="save-btn"
+        [disabled]="!newFabricName.trim() || !newFabricBase64 || isSaving"
+        (click)="saveFabric()"
+      >
+        {{ isSaving ? 'Saving...' : 'Save Fabric' }}
+      </button>
+    </div>
+  </div>
+</div>

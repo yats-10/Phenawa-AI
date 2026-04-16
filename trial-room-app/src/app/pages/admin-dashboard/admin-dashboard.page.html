@@ -1,0 +1,323 @@
+<ion-content class="admin-content" [fullscreen]="true">
+
+  <!-- Custom Header -->
+  <div class="page-header">
+    <div class="header-left">
+      <span class="header-emoji">🛡️</span>
+      <span class="header-title">Admin Dashboard</span>
+    </div>
+    <div class="header-actions">
+      <button class="header-btn" (click)="loadUsers()">🔄</button>
+      <button class="header-btn accent" (click)="openCreateModal()">＋ Add Shop</button>
+      <button class="header-btn" (click)="logout()">🚪</button>
+    </div>
+  </div>
+
+  <!-- Stats Bar -->
+  <div class="stats-bar">
+    <div class="stat-item" (click)="setFilter('all')">
+      <span class="stat-num">{{ totalShops }}</span>
+      <span class="stat-text">Total Shops</span>
+    </div>
+    <div class="stat-item active" (click)="setFilter('active')">
+      <span class="stat-num">{{ activeShops }}</span>
+      <span class="stat-text">Active</span>
+    </div>
+    <div class="stat-item expiring" (click)="setFilter('expiring')">
+      <span class="stat-num">{{ expiringSoon }}</span>
+      <span class="stat-text">Expiring Soon</span>
+    </div>
+    <div class="stat-item expired" (click)="setFilter('expired')">
+      <span class="stat-num">{{ expiredShops }}</span>
+      <span class="stat-text">Expired</span>
+    </div>
+    <div class="stat-item today">
+      <span class="stat-num">{{ totalTodayGenerations }}</span>
+      <span class="stat-text">Today's Tries</span>
+    </div>
+  </div>
+
+  <!-- Search + Filter -->
+  <div class="search-filter-bar">
+    <ion-searchbar
+      placeholder="Search by shop, username or phone"
+      (ionInput)="onSearch($event)"
+      class="search-bar"
+    ></ion-searchbar>
+    <div class="filter-chips">
+      <button
+        *ngFor="let f of ['all','active','inactive','expiring','expired']"
+        class="filter-chip"
+        [class.active]="activeFilter === f"
+        (click)="setFilter($any(f))"
+      >
+        {{ f | titlecase }}
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div class="loading-center" *ngIf="isLoading">
+    <ion-spinner name="crescent"></ion-spinner>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrapper" *ngIf="!isLoading">
+    <table class="shops-table">
+      <thead>
+        <tr>
+          <th>Shop / Owner</th>
+          <th>Username</th>
+          <th>Phone</th>
+          <th>Status</th>
+          <th>Access Until</th>
+          <th>Today</th>
+          <th>Total</th>
+          <th>Last Active</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let user of filteredUsers" class="shop-row">
+          <td class="shop-name-cell">
+            <strong>{{ user.shop_name }}</strong>
+            <br />
+            <small class="owner-name">{{ user.owner_name }}</small>
+          </td>
+          <td class="username-cell">{{ user.username }}</td>
+          <td class="phone-cell">
+            <a [href]="'tel:' + user.phone" class="phone-link">{{ user.phone }}</a>
+          </td>
+          <td>
+            <ion-badge [color]="getStatusColor(user)">
+              {{ getUserStatus(user) }}
+            </ion-badge>
+          </td>
+          <td [class]="'expiry-' + getExpiryColor(user)">
+            {{ user.access_expires_at | date:'dd MMM yy' }}
+          </td>
+          <td class="num-cell">{{ user.generations_today }}</td>
+          <td class="num-cell clickable" (click)="openStatsModal(user)">{{ user.total_generations }}</td>
+          <td class="last-active-cell">{{ getLastActive(user) }}</td>
+          <td class="actions-cell">
+            <ion-button
+              size="small"
+              fill="outline"
+              [color]="user.is_active ? 'warning' : 'success'"
+              (click)="toggleActive(user)"
+            >
+              {{ user.is_active ? 'Deactivate' : 'Activate' }}
+            </ion-button>
+            <ion-button
+              size="small"
+              fill="outline"
+              color="primary"
+              (click)="openEditModal(user)"
+            >
+              <ion-icon slot="icon-only" name="create-outline"></ion-icon>
+            </ion-button>
+          </td>
+        </tr>
+        <tr *ngIf="filteredUsers.length === 0">
+          <td colspan="9" class="empty-row">No shops match your filter.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</ion-content>
+
+<!-- Edit Modal -->
+<ion-modal #editModal>
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Edit Shop — {{ editUser?.shop_name }}</ion-title>
+        <ion-button slot="end" fill="clear" (click)="editModalRef.dismiss()">Cancel</ion-button>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="modal-content">
+      <div class="edit-form" *ngIf="editUser">
+        <ion-item>
+          <ion-label position="floating">Shop Name</ion-label>
+          <ion-input [(ngModel)]="editPayload.shop_name"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Owner Name</ion-label>
+          <ion-input [(ngModel)]="editPayload.owner_name"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Phone</ion-label>
+          <ion-input [(ngModel)]="editPayload.phone" type="tel"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Access Until (YYYY-MM-DD)</ion-label>
+          <ion-input [(ngModel)]="editPayload.access_expires_at" type="date"></ion-input>
+        </ion-item>
+
+        <div class="quick-extend">
+          <span class="quick-label">Quick extend:</span>
+          <ion-button size="small" fill="outline" (click)="extendAccess(30)">+30 days</ion-button>
+          <ion-button size="small" fill="outline" (click)="extendAccess(90)">+90 days</ion-button>
+          <ion-button size="small" fill="outline" (click)="extendAccess(365)">+1 year</ion-button>
+        </div>
+
+        <ion-item>
+          <ion-label position="floating">New Password (leave blank to keep)</ion-label>
+          <ion-input
+            [(ngModel)]="editPayload.new_password"
+            [type]="showEditPassword ? 'text' : 'password'"
+          ></ion-input>
+          <ion-button slot="end" fill="clear" (click)="showEditPassword = !showEditPassword">
+            <ion-icon slot="icon-only" [name]="showEditPassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </ion-button>
+        </ion-item>
+
+        <ion-item>
+          <ion-label>Account Active</ion-label>
+          <ion-toggle [(ngModel)]="editPayload.is_active" slot="end"></ion-toggle>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          class="save-btn"
+          [attr.disabled]="isUpdating ? '' : null"
+          (click)="saveEdit()"
+        >
+          <ion-spinner *ngIf="isUpdating" name="crescent" slot="start"></ion-spinner>
+          {{ isUpdating ? 'Saving...' : 'Save Changes' }}
+        </ion-button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Create Modal -->
+<ion-modal #createModal>
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Add New Shop</ion-title>
+        <ion-button slot="end" fill="clear" (click)="createModalRef.dismiss()">Cancel</ion-button>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="modal-content">
+      <div class="edit-form">
+        <ion-item>
+          <ion-label position="floating">Shop Name *</ion-label>
+          <ion-input
+            [(ngModel)]="createPayload.shop_name"
+            (ionBlur)="autoSuggestUsername()"
+          ></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Owner Name *</ion-label>
+          <ion-input [(ngModel)]="createPayload.owner_name"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Phone *</ion-label>
+          <ion-input [(ngModel)]="createPayload.phone" type="tel"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Username *</ion-label>
+          <ion-input [(ngModel)]="createPayload.username"></ion-input>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Password *</ion-label>
+          <ion-input
+            [(ngModel)]="createPayload.password"
+            [type]="showCreatePassword ? 'text' : 'password'"
+          ></ion-input>
+          <ion-button slot="end" fill="clear" (click)="showCreatePassword = !showCreatePassword">
+            <ion-icon slot="icon-only" [name]="showCreatePassword ? 'eye-off-outline' : 'eye-outline'"></ion-icon>
+          </ion-button>
+        </ion-item>
+        <ion-item>
+          <ion-label position="floating">Access Until *</ion-label>
+          <ion-input [(ngModel)]="createPayload.access_expires_at" type="date"></ion-input>
+        </ion-item>
+
+        <ion-button
+          expand="block"
+          class="save-btn"
+          [attr.disabled]="
+            !createPayload.shop_name ||
+            !createPayload.owner_name ||
+            !createPayload.phone ||
+            !createPayload.username ||
+            !createPayload.password ||
+            !createPayload.access_expires_at ||
+            isSaving
+            ? '' : null
+          "
+          (click)="createUser()"
+        >
+          <ion-spinner *ngIf="isSaving" name="crescent" slot="start"></ion-spinner>
+          {{ isSaving ? 'Creating...' : 'Create Shop' }}
+        </ion-button>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>
+
+<!-- Stats Modal -->
+<ion-modal #statsModal>
+  <ng-template>
+    <ion-header>
+      <ion-toolbar>
+        <ion-title>Try-On Stats — {{ statsUser?.shop_name }}</ion-title>
+        <ion-button slot="end" fill="clear" (click)="statsModalRef.dismiss()">Close</ion-button>
+      </ion-toolbar>
+    </ion-header>
+    <ion-content class="modal-content">
+      <div class="stats-modal-body">
+        <div class="loading-center" *ngIf="isLoadingStats">
+          <ion-spinner name="crescent"></ion-spinner>
+        </div>
+        <ng-container *ngIf="statsData && !isLoadingStats">
+          <div class="stats-grid">
+            <div class="stats-card">
+              <span class="stats-card-num">{{ statsData.total_generations }}</span>
+              <span class="stats-card-label">Total Try-Ons</span>
+            </div>
+            <div class="stats-card">
+              <span class="stats-card-num">{{ statsData.generations_this_month }}</span>
+              <span class="stats-card-label">This Month</span>
+            </div>
+            <div class="stats-card">
+              <span class="stats-card-num">{{ statsData.generations_today }}</span>
+              <span class="stats-card-label">Today</span>
+            </div>
+            <div class="stats-card">
+              <span class="stats-card-num">{{ statsData.fabrics_count }}</span>
+              <span class="stats-card-label">Fabrics</span>
+            </div>
+          </div>
+
+          <div class="stats-section" *ngIf="statsData.top_garment_types.length">
+            <h3 class="stats-section-title">Top Garment Types</h3>
+            <div class="garment-bar-list">
+              <div class="garment-bar-item" *ngFor="let g of statsData.top_garment_types">
+                <div class="garment-bar-label">
+                  <span class="garment-name">{{ g.type }}</span>
+                  <span class="garment-count">{{ g.count }}</span>
+                </div>
+                <div class="garment-bar-track">
+                  <div
+                    class="garment-bar-fill"
+                    [style.width.%]="(g.count / statsData.top_garment_types[0].count) * 100"
+                  ></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="stats-meta">
+            <span *ngIf="statsData.last_active">Last active: {{ statsData.last_active | date:'dd MMM yyyy, h:mm a' }}</span>
+            <span *ngIf="!statsData.last_active">No activity yet</span>
+          </div>
+        </ng-container>
+      </div>
+    </ion-content>
+  </ng-template>
+</ion-modal>

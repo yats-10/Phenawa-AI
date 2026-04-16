@@ -1,0 +1,183 @@
+<!-- Side Menu Overlay -->
+<div class="menu-backdrop" *ngIf="menuOpen" (click)="menuOpen = false"></div>
+<div class="side-menu" [class.open]="menuOpen">
+  <div class="menu-header">
+    <span class="menu-app-name">Phenawa AI</span>
+    <span class="menu-shop">{{ shopName }}</span>
+  </div>
+  <div class="menu-items">
+    <button class="menu-item" (click)="menuOpen = false">
+      <span class="menu-icon">🏠</span><span>Home</span>
+    </button>
+    <button class="menu-item" (click)="goToCatalogue(); menuOpen = false">
+      <span class="menu-icon">📚</span><span>Catalogue</span>
+    </button>
+    <button class="menu-item" (click)="goToProfile(); menuOpen = false">
+      <span class="menu-icon">👤</span><span>Profile</span>
+    </button>
+  </div>
+  <div class="menu-footer">
+    <span class="menu-count">Today: {{ todayCount }} tries</span>
+  </div>
+</div>
+
+<ion-header class="custom-header">
+  <ion-toolbar>
+    <div class="toolbar-content">
+      <button class="hamburger-btn" (click)="menuOpen = !menuOpen">☰</button>
+      <span class="app-name">Phenawa AI</span>
+      <span class="shop-name" *ngIf="shopName">{{ shopName }}</span>
+    </div>
+  </ion-toolbar>
+</ion-header>
+
+<ion-content [fullscreen]="true">
+  <!-- Loading Overlay -->
+  <div class="loading-overlay" *ngIf="isLoading">
+    <div class="loading-card">
+      <div class="loading-spinner"></div>
+      <p class="loading-msg">{{ loadingMessage }}</p>
+      <p class="loading-sub">This takes about 20-30 seconds</p>
+    </div>
+  </div>
+
+  <div class="page-wrapper">
+    <!-- Section 1: Two Upload Boxes Side by Side -->
+    <div class="upload-row">
+      <!-- Customer Photo Box -->
+      <div class="upload-box">
+        <ng-container *ngIf="personPreviewUrl; else personEmpty">
+          <div class="preview-wrapper">
+            <img [src]="personPreviewUrl" alt="Customer photo" class="preview-img" />
+            <button class="clear-btn" (click)="clearPersonPhoto()">✕</button>
+          </div>
+        </ng-container>
+        <ng-template #personEmpty>
+          <div class="empty-state">
+            <span class="upload-emoji">👤</span>
+            <span class="upload-title">Customer Photo</span>
+            <span class="upload-hint">Tap to upload</span>
+            <div class="pill-row">
+              <button class="pill-btn" (click)="capturePersonPhoto('camera')">📷 Camera</button>
+              <button class="pill-btn" (click)="capturePersonPhoto('gallery')">🖼️ Gallery</button>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+
+      <!-- Fabric Photo Box -->
+      <div class="upload-box">
+        <ng-container *ngIf="fabricPreviewUrl; else fabricEmpty">
+          <div class="preview-wrapper">
+            <img [src]="fabricPreviewUrl" alt="Fabric photo" class="preview-img" />
+            <div class="fabric-badge" *ngIf="selectedFabricName">{{ selectedFabricName }}</div>
+            <button class="clear-btn" (click)="clearFabricPhoto()">✕</button>
+          </div>
+        </ng-container>
+        <ng-template #fabricEmpty>
+          <div class="empty-state">
+            <span class="upload-emoji">🧵</span>
+            <span class="upload-title">Fabric Photo</span>
+            <span class="upload-hint">Tap to upload</span>
+            <div class="pill-row">
+              <button class="pill-btn" (click)="captureFabricPhoto('camera')">📷 Camera</button>
+              <button class="pill-btn" (click)="captureFabricPhoto('gallery')">🖼️ Gallery</button>
+              <button class="pill-btn" (click)="openCatalogueModal()">📚 Catalogue</button>
+            </div>
+          </div>
+        </ng-template>
+      </div>
+    </div>
+
+    <!-- Section 2: Garment Selection Card -->
+    <div class="garment-card">
+      <p class="section-label">SELECT CUSTOMER TYPE</p>
+      <div class="gender-row">
+        <div
+          class="gender-card"
+          [class.selected]="selectedGender === 'male'"
+          (click)="selectGender('male')"
+        >
+          <span class="gender-emoji">👨</span>
+          <span class="gender-text">Male</span>
+        </div>
+        <div
+          class="gender-card"
+          [class.selected]="selectedGender === 'female'"
+          (click)="selectGender('female')"
+        >
+          <span class="gender-emoji">👩</span>
+          <span class="gender-text">Female</span>
+        </div>
+      </div>
+
+      <div class="garment-types" *ngIf="selectedGender">
+        <p class="section-label">SELECT GARMENT TYPE</p>
+        <div class="garment-grid">
+          <div
+            *ngFor="let g of (selectedGender === 'male' ? maleGarments : femaleGarments)"
+            class="garment-item"
+            [class.selected]="selectedGarment === g.value"
+            (click)="onGarmentSelected(g.value)"
+          >
+            <span class="garment-emoji">{{ g.emoji }}</span>
+            <span class="garment-name">{{ g.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Section 4: Result Area -->
+    <div class="result-card" *ngIf="resultBase64">
+      <div class="result-img-wrapper">
+        <img [src]="'data:image/jpeg;base64,' + resultBase64" alt="Try-on result" class="result-img" (click)="showFullScreen = true" />
+        <span class="cached-badge" *ngIf="isCached">⚡ Cached</span>
+        <span class="tap-hint">Tap image to enlarge</span>
+      </div>
+      <div class="result-actions">
+        <button class="action-btn" (click)="saveToGallery()">💾 Save</button>
+        <button class="action-btn" (click)="shareResult()">📤 Share</button>
+        <button class="action-btn" (click)="resetAll()">🔄 New Try</button>
+      </div>
+    </div>
+
+    <!-- Spacer to push button down -->
+    <div class="spacer"></div>
+
+    <!-- Section 3: Try It On Button (sticky at bottom) -->
+    <button class="try-btn" [disabled]="!canGenerate" (click)="generate()">
+      ✨ Try It On
+    </button>
+  </div>
+</ion-content>
+
+<!-- Catalogue Overlay -->
+<div class="catalogue-overlay" *ngIf="showCatalogueModal" (click)="showCatalogueModal = false">
+  <div class="catalogue-panel" (click)="$event.stopPropagation()">
+    <div class="catalogue-header">
+      <span class="catalogue-title">My Fabric Catalogue</span>
+      <button class="catalogue-close-btn" (click)="showCatalogueModal = false">✕</button>
+    </div>
+    <div class="catalogue-body">
+      <div class="catalogue-grid" *ngIf="catalogueFabrics.length > 0">
+        <div
+          class="catalogue-item"
+          *ngFor="let fabric of catalogueFabrics"
+          (click)="handleCatalogueSelect(fabric)"
+        >
+          <img [src]="'data:image/jpeg;base64,' + fabric.imageBase64" [alt]="fabric.name" />
+          <p>{{ fabric.name }}</p>
+        </div>
+      </div>
+      <div class="catalogue-empty" *ngIf="catalogueFabrics.length === 0">
+        <p>No fabrics saved yet. Add fabrics in the Catalogue page.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Full-Screen Image Overlay -->
+<div class="fullscreen-overlay" *ngIf="showFullScreen && resultBase64" (click)="showFullScreen = false">
+  <button class="fullscreen-close" (click)="showFullScreen = false">✕</button>
+  <img [src]="'data:image/jpeg;base64,' + resultBase64" alt="Try-on result full screen" class="fullscreen-img" (click)="$event.stopPropagation()" />
+</div>

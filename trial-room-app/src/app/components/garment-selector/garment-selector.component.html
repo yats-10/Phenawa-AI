@@ -1,0 +1,25 @@
+<div class="garment-selector">
+  <p class="group-label">Men</p>
+  <div class="chip-row">
+    <ion-chip
+      *ngFor="let g of menGarments"
+      [color]="selected === g.label ? 'primary' : 'medium'"
+      [outline]="selected !== g.label"
+      (click)="select(g.label)"
+    >
+      <ion-label>{{ g.label }}</ion-label>
+    </ion-chip>
+  </div>
+
+  <p class="group-label">Women</p>
+  <div class="chip-row">
+    <ion-chip
+      *ngFor="let g of womenGarments"
+      [color]="selected === g.label ? 'secondary' : 'medium'"
+      [outline]="selected !== g.label"
+      (click)="select(g.label)"
+    >
+      <ion-label>{{ g.label }}</ion-label>
+    </ion-chip>
+  </div>
+</div>

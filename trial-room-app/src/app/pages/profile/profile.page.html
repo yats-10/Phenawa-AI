@@ -1,0 +1,56 @@
+<ion-content class="profile-content" [fullscreen]="true">
+  <div class="profile-wrapper">
+
+    <!-- Custom Header -->
+    <div class="page-header">
+      <button class="back-btn" (click)="goBack()">← Back</button>
+      <h1 class="page-title">👤 Profile</h1>
+      <div style="width: 48px"></div>
+    </div>
+
+    <!-- Shop Hero -->
+    <div class="shop-hero">
+      <span class="avatar-emoji">🏪</span>
+      <h1 class="shop-name">{{ shopName }}</h1>
+      <p class="username">&#64;{{ username }}</p>
+    </div>
+
+    <!-- Stats Cards -->
+    <div class="stats-row">
+      <div class="stat-card">
+        <span class="stat-emoji">✨</span>
+        <span class="stat-value">{{ totalGenerations }}</span>
+        <span class="stat-label">Total Try-Ons</span>
+      </div>
+      <div class="stat-card" [class.danger]="expiryColor === 'danger'" [class.warning]="expiryColor === 'warning'">
+        <span class="stat-emoji">📅</span>
+        <span class="stat-value" [class.text-danger]="expiryColor === 'danger'" [class.text-warning]="expiryColor === 'warning'" [class.text-success]="expiryColor === 'success'">
+          {{ accessExpiresAt | date:'dd MMM yyyy' }}
+        </span>
+        <span class="stat-label">Access Valid Until</span>
+      </div>
+    </div>
+
+    <!-- Expiry warning -->
+    <div class="expiry-warning danger" *ngIf="expiryColor === 'danger'">
+      <span>📞</span>
+      <span>Access expired. Call {{ adminPhone }} to renew.</span>
+    </div>
+    <div class="expiry-warning warning" *ngIf="expiryColor === 'warning'">
+      <span>📞</span>
+      <span>Access expiring soon. Call {{ adminPhone }} to renew.</span>
+    </div>
+
+    <!-- Info -->
+    <div class="info-card">
+      <div class="info-row">
+        <span class="info-label">App Version</span>
+        <span class="info-value">{{ appVersion }}</span>
+      </div>
+    </div>
+
+    <!-- Logout -->
+    <button class="logout-btn" (click)="logout()">🚪 Logout</button>
+
+  </div>
+</ion-content>
