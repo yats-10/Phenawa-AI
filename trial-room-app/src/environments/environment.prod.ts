@@ -1,5 +1,5 @@
 export const environment = {
   production: true,
-  apiUrl: 'https://your-railway-app.railway.app',
+  apiUrl: 'https://phenawa-ai-production.up.railway.app',
   adminPhone: '9817352522',
 };
