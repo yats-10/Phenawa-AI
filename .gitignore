@@ -14,6 +14,9 @@
 **/server/
 /trial-room-app/dist/
 /trial-room-app/out-tsc/
+/trial-room-app/src/environments/environment.android-release.ts
+**/*.jks
+**/*.keystore
 
 # --- OS/IDE Files ---
 .vscode/

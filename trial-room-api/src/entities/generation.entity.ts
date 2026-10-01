@@ -1,5 +1,6 @@
 import {
   Entity,
+  Index,
   PrimaryGeneratedColumn,
   Column,
   CreateDateColumn,
@@ -10,6 +11,7 @@ import { User } from './user.entity';
 import { Fabric } from './fabric.entity';
 
 @Entity('generations')
+@Index(['userId', 'createdAt'])
 export class Generation {
   @PrimaryGeneratedColumn('uuid')
   id!: string;

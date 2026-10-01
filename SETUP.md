@@ -1,259 +1,210 @@
-# AI Trial Room — Setup & Deployment Guide
+# Phenawa AI — Setup & Deployment
+
+Monorepo with two deployables:
+
+| Folder | What it is | Hosted on |
+|---|---|---|
+| `trial-room-api` | NestJS + TypeORM + Postgres API | Railway |
+| `trial-room-app` | Ionic/Angular 17 SPA (also the Capacitor Android shell) | Vercel |
 
 ---
 
 ## 1. Prerequisites
 
-- Node.js 20+ and npm 10+
-- PostgreSQL 14+ (local or hosted)
-- An OpenAI API account with access to GPT Image 2.5
-- (Optional) Railway account for backend hosting
-- (Optional) Vercel account for frontend hosting
-- Android Studio (for Android APK build)
+- Node.js 20.x and npm 10+ (both apps pin Node 20 via `.nvmrc` and `engines`)
+- PostgreSQL 14+ for local development
+- An OpenAI API key with access to GPT Image models
+- Railway and Vercel accounts
+- Android Studio + JDK 17, only for the APK build
 
 ---
 
-## 2. Backend Setup (`trial-room-api`)
+## 2. Local development
 
-### 2.1 Install dependencies
+### 2.1 Backend
 
 ```bash
 cd trial-room-api
 npm install
-```
-
-### 2.2 Configure environment
-
-Copy `.env.example` to `.env` and fill in every value:
-
-```bash
-cp .env.example .env
-```
-
-```env
-# Database — local example
-DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/trial_room
-
-# JWT secrets — use long random strings
-JWT_SECRET=change_me_to_a_long_random_secret_at_least_64_chars
-ADMIN_JWT_SECRET=change_me_to_a_different_long_random_secret
-
-# OpenAI image editing
-OPENAI_API_KEY=your_openai_api_key
-OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
-
-# Admin seed
-ADMIN_SEED_SECRET=pick_a_strong_seed_secret
-
-# App
-PORT=3001
-NODE_ENV=development
-```
-
-**Getting each value:**
-- `DATABASE_URL`: Your PostgreSQL connection string.
-- `OPENAI_API_KEY`: [OpenAI API keys](https://platform.openai.com/api-keys) → Create API key. The default model is `gpt-image-2.5-sunburst`; set `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` for a faster alternative.
-- Generate secure secrets: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
-
-### 2.3 Create the database
-
-```bash
-# If using local PostgreSQL
-psql -U postgres -c "CREATE DATABASE trial_room;"
-```
-
-TypeORM `synchronize: true` will auto-create all tables on first run.
-
-### 2.4 Seed the first admin account
-
-Start the dev server first:
-
-```bash
+cp .env.example .env     # then fill in every value
+createdb trial_room      # or: psql -U postgres -c "CREATE DATABASE trial_room;"
 npm run start:dev
 ```
 
-Then in a new terminal, seed the admin:
+The API runs migrations on boot, so the tables appear on first start. Leave
+`CORS_ORIGINS` empty locally — empty means "allow every browser origin", which
+is what the dev server needs.
+
+Seed the first admin once:
 
 ```bash
 curl -X POST http://localhost:3001/admin/seed \
-  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value" \
+  -H "x-seed-secret: $ADMIN_SEED_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"username":"admin","password":"choose_a_strong_password"}'
 ```
 
-You should get:
-```json
-{ "message": "Admin account created" }
-```
+A second seed request is rejected once an admin exists.
 
-> Run this only once. A second seed request is rejected after the first admin exists.
-
-### 2.5 Verify the API is running
-
-Use the admin login endpoint with the credentials you just created. This project does not currently expose a public health endpoint.
-
----
-
-## 3. Frontend Setup (`trial-room-app`)
-
-### 3.1 Install dependencies
+### 2.2 Frontend
 
 ```bash
 cd trial-room-app
 npm install
+npm start          # http://localhost:4300
 ```
 
-### 3.2 Point to your backend
+`src/environments/environment.ts` already points at `http://localhost:3001`.
+Admin sign-in is at `/admin/login`.
 
-For local development, `src/environments/environment.ts` already points to `http://localhost:3001`.
+Do not open `src/app/pages/**/*.html` directly as files — they are Angular
+templates and render as raw `{{ }}` without the dev server.
 
-For production, edit `src/environments/environment.prod.ts`:
+---
+
+## 3. Database schema (migrations)
+
+`synchronize` is **off in every environment**. The schema is owned by the
+migrations in `src/migrations/`, and `migrationsRun: true` applies pending ones
+at boot — so a deploy never starts against a stale schema and never silently
+alters a column.
+
+After changing an entity:
+
+```bash
+cd trial-room-api
+npm run migration:generate -- src/migrations/DescribeTheChange
+```
+
+Then **register it** in `src/app.module.ts` (`migrations: [...]`) — the array is
+explicit so the compiled bundle always contains the migrations it needs. Review
+the generated SQL, commit it, and the next deploy applies it.
+
+Other commands: `npm run migration:run`, `npm run migration:revert`.
+
+---
+
+## 4. Railway — backend
+
+### 4.1 Create the service
+
+Railway dashboard → **New Project** → **Deploy from GitHub repo** → this repo.
+Because the repo is a monorepo, open the service's **Settings** and set:
+
+- **Root Directory**: `trial-room-api`
+
+Build and deploy commands come from `trial-room-api/railway.json`; Node 20 is
+pinned in `nixpacks.toml`. Nothing else to configure there.
+
+### 4.2 Add Postgres
+
+Project → **New** → **Database** → **PostgreSQL**.
+
+### 4.3 Variables
+
+On the API service → **Variables**:
+
+| Variable | Value |
+|---|---|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (reference, not a literal) |
+| `NODE_ENV` | `production` |
+| `JWT_SECRET` | 64-char random string |
+| `ADMIN_JWT_SECRET` | a *different* 64-char random string |
+| `JWT_EXPIRES_IN` | `30d` |
+| `ADMIN_JWT_EXPIRES_IN` | `24h` |
+| `ADMIN_SEED_SECRET` | strong random string |
+| `OPENAI_API_KEY` | your OpenAI key |
+| `OPENAI_IMAGE_MODEL` | `gpt-image-2.5-sunburst` |
+| `ADMIN_PHONE` | support number shown on expiry |
+| `MAX_DAILY_ALERT_THRESHOLD` | `80` |
+| `CORS_ORIGINS` | set after the Vercel domain exists (section 5.3) |
+
+Generate a secret with:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+Do **not** set `PORT` — Railway injects it, and the app binds to `0.0.0.0` on
+whatever it provides.
+
+`DATABASE_SSL` is optional. Unset, TLS is decided from the host: plain for
+`localhost` and `*.railway.internal`, TLS everywhere else.
+
+### 4.4 Expose and verify
+
+Settings → **Networking** → **Generate Domain**. Then:
+
+```bash
+curl https://<your-service>.up.railway.app/health
+# {"status":"ok","database":"up"}
+```
+
+`/health` is the configured healthcheck path, so a deploy that cannot reach the
+database never goes live.
+
+### 4.5 Seed the admin
+
+```bash
+curl -X POST https://<your-service>.up.railway.app/admin/seed \
+  -H "x-seed-secret: <ADMIN_SEED_SECRET>" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"choose_a_strong_password"}'
+```
+
+---
+
+## 5. Vercel — frontend
+
+### 5.1 Point the app at the API
+
+Edit `trial-room-app/src/environments/environment.prod.ts`:
 
 ```typescript
 export const environment = {
   production: true,
-  apiUrl: 'https://your-railway-app.up.railway.app'  // ← your Railway URL
+  apiUrl: 'https://<your-service>.up.railway.app',
+  adminPhone: '9817352522',
 };
 ```
 
-### 3.3 Run the web app
+This is baked in at build time, so **changing it requires a redeploy**.
 
-```bash
-npm start
-# Open http://localhost:4300 in your browser
+### 5.2 Create the project
+
+Vercel → **Add New** → **Project** → import this repo, then set:
+
+- **Root Directory**: `trial-room-app`
+
+Build command, install command, output directory and routing all come from
+`trial-room-app/vercel.json`. The output directory is `www/browser` — Angular 17's
+application builder nests the browser bundle one level below `outputPath`.
+
+### 5.3 Close the CORS loop
+
+Once Vercel gives you the domain, set on the Railway API service:
+
+```
+CORS_ORIGINS=https://<your-project>.vercel.app,https://*.vercel.app
 ```
 
-Open the URL shown by the development server. Do not open `src/app/pages/home/home.page.html` as a file: it is an Angular template and will show raw `{{ ... }}` placeholders without the running app.
-The separate admin sign-in is at `http://localhost:4300/admin/login`.
+The `*.` entry matches one subdomain label, which covers preview deployments.
+Add your custom domain to the list when you attach one. Requests with no
+`Origin` header — the Android build, curl, health probes — are always allowed;
+CORS only constrains browsers.
 
 ---
 
-## 4. Railway Backend Deployment
-
-### 4.1 Create a Railway project
-
-```bash
-npm install -g @railway/cli
-railway login
-cd trial-room-api
-railway init
-railway up
-```
-
-Or use the Railway web dashboard: New Project → Deploy from GitHub repo → select `trial-room-api`.
-
-### 4.2 Add a PostgreSQL database in Railway
-
-Dashboard → your project → New → Database → PostgreSQL.
-
-Railway automatically sets `DATABASE_URL` in your project environment.
-
-### 4.3 Set environment variables in Railway
-
-Dashboard → your project → Variables → add all values from your `.env` **except** `DATABASE_URL` (Railway sets that automatically):
-
-```
-JWT_SECRET
-ADMIN_JWT_SECRET
-OPENAI_API_KEY
-OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
-ADMIN_SEED_SECRET
-NODE_ENV=production
-PORT=3001
-```
-
-### 4.4 Create `railway.toml` (optional — manual config)
-
-```toml
-[build]
-builder = "nixpacks"
-buildCommand = "npm run build"
-
-[deploy]
-startCommand = "npm run start:prod"
-restartPolicyType = "on_failure"
-```
-
-### 4.5 Set `NODE_ENV=production`
-
-In production, TypeORM sets `synchronize: false`. Apply reviewed database migrations before deploying schema changes; do not switch a production server to development mode to synchronize tables.
-
-### 4.6 Seed admin on Railway
-
-After deployment, get your Railway public URL (e.g. `https://xxx.up.railway.app`) and run:
-
-```bash
-curl -X POST https://xxx.up.railway.app/admin/seed \
-  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value" \
-  -H "Content-Type: application/json" \
-  -d '{"username":"admin","password":"choose_a_strong_password"}'
-```
-
----
-
-## 5. Vercel Frontend Deployment
-
-### 5.1 Build the production bundle
-
-Ensure `environment.prod.ts` has your Railway URL, then:
-
-```bash
-cd trial-room-app
-npm run build:prod
-# Output → www/
-```
-
-### 5.2 Deploy via Vercel CLI
-
-```bash
-npm install -g vercel
-vercel login
-vercel --prod
-```
-
-When prompted:
-- **Build command**: `npm run build:prod`
-- **Output directory**: `www`
-- **Install command**: `npm install`
-
-### 5.3 Create `vercel.json` for SPA routing
-
-```json
-{
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-Place this in `trial-room-app/vercel.json`.
-
----
-
-## 6. Android APK Build (Capacitor)
-
-### 6.1 Prerequisites
-
-- Android Studio installed with SDK Platform 33+
-- Java 17+ JDK
-
-### 6.2 Sync Capacitor
+## 6. Android APK (Capacitor)
 
 ```bash
 cd trial-room-app
 npm run build:prod
 npx cap sync android
-```
-
-This copies the `www/` web bundle into the Android project and installs native plugins.
-
-### 6.3 Open in Android Studio
-
-```bash
 npx cap open android
 ```
 
-### 6.4 Update `AndroidManifest.xml`
-
-Add internet permission (Capacitor usually adds this, but verify):
+Verify `AndroidManifest.xml` has:
 
 ```xml
 <uses-permission android:name="android.permission.INTERNET" />
@@ -262,77 +213,68 @@ Add internet permission (Capacitor usually adds this, but verify):
 <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 ```
 
-### 6.5 Build the APK
+In Android Studio: **Build → Generate Signed Bundle/APK → APK** for a release
+build. Output lands in `android/app/build/outputs/apk/release/`.
 
-In Android Studio:
-- **Debug APK**: Build → Build Bundle(s)/APK(s) → Build APK(s)
-- **Release APK**: Build → Generate Signed Bundle/APK → APK → create/use a keystore → release build
-
-Output: `android/app/build/outputs/apk/release/app-release.apk`
+The APK talks to the same Railway API and needs no CORS entry.
 
 ---
 
-## 7. Key API Endpoints Reference
+## 7. API reference
 
 | Method | Endpoint | Auth | Description |
-|--------|----------|------|-------------|
+|---|---|---|---|
+| GET | `/health` | None | Liveness + database check |
 | POST | `/auth/login` | None | Shopkeeper login |
 | POST | `/tryon/generate` | JWT | Generate try-on image |
-| GET | `/fabrics` | JWT | List fabrics |
-| POST | `/fabrics` | JWT | Upload new fabric |
-| DELETE | `/fabrics/:id` | JWT | Delete fabric |
-| GET | `/history?page=1&limit=20` | JWT | Paginated history |
+| GET | `/tryon/count` | JWT | Generation count for the signed-in shop |
+| GET | `/fabrics` | JWT | List the shop's fabrics |
+| POST | `/fabrics` | JWT | Save a fabric |
+| DELETE | `/fabrics/:id` | JWT | Delete a fabric |
 | POST | `/admin/login` | None | Admin login |
-| POST | `/admin/seed` | Seed secret header | Create first admin |
-| GET | `/admin/users` | Admin JWT | List all shops |
-| POST | `/admin/users` | Admin JWT | Create shop account |
-| PATCH | `/admin/users/:id` | Admin JWT | Update shop |
+| POST | `/admin/seed` | `x-seed-secret` header | Create the first admin (once) |
+| GET | `/admin/users` | Admin JWT | List shops |
+| POST | `/admin/users` | Admin JWT | Create a shop account |
+| PATCH | `/admin/users/:id` | Admin JWT | Update a shop |
 | GET | `/admin/users/:id/stats` | Admin JWT | Shop statistics |
 
 ---
 
-## 8. Daily Usage Flow
+## 8. Daily flow
 
-1. **Admin** logs into the dashboard → creates a shop account with an expiry date.
-2. **Shopkeeper** logs in on mobile with their username/password.
-3. Shopkeeper captures/uploads a customer photo and a fabric photo (or selects from their catalogue).
-4. Selects garment type → taps "Try It On".
-5. App sends both images to the backend → OpenAI edits them into one try-on image → result is returned to the app. Generation metadata is recorded in PostgreSQL; the image itself is not saved there.
-6. Shopkeeper can save to gallery or share directly with the customer.
-7. Admin monitors daily usage from the dashboard.
+1. Admin creates a shop account with an expiry date.
+2. Shopkeeper signs in on mobile.
+3. Shopkeeper captures a customer photo and a fabric photo (or picks one from
+   the saved catalogue).
+4. Picks a garment type → **Try It On**.
+5. Both images go to the API, OpenAI composes the try-on, the result comes back
+   to the app. Generation metadata is stored in Postgres.
+6. Shopkeeper saves or shares the result.
 
----
-
-## 9. Environment Variable Checklist
-
-### Backend (`.env` / Railway Variables)
-- [ ] `DATABASE_URL`
-- [ ] `JWT_SECRET`
-- [ ] `ADMIN_JWT_SECRET`
-- [ ] `OPENAI_API_KEY`
-- [ ] `OPENAI_IMAGE_MODEL` (optional; defaults to `gpt-image-2.5-sunburst`)
-- [ ] `ADMIN_SEED_SECRET`
-- [ ] `NODE_ENV`
-
-### Frontend
-- [ ] `src/environments/environment.prod.ts` → `apiUrl` set to Railway URL
+Images are stored base64 in Postgres, not on disk — the container filesystem is
+ephemeral on Railway and nothing is written to it.
 
 ---
 
-## 10. Common Issues & Fixes
+## 9. Troubleshooting
 
-**CORS error in browser dev:**
-The backend enables CORS for all origins by default (see `main.ts`). If you restrict origins in production, add your Vercel domain to the `origin` array.
+**Browser requests fail with a CORS error.**
+The exact origin must be in `CORS_ORIGINS` — scheme included, no trailing slash.
+The API logs `Blocked CORS request from origin: ...` for every rejection.
 
-**Camera not working on Android:**
-- Make sure `@capacitor/camera` is in `package.json` and synced: `npx cap sync android`
-- Camera permission must be granted on first use
+**Frontend still calls localhost (or the old URL) in production.**
+`environment.prod.ts` is compiled into the bundle. Update it and redeploy; a
+Vercel environment variable will not change it.
 
-**OpenAI returns no image:**
-- Verify `OPENAI_API_KEY` is valid and your organization has access to GPT Image models.
-- Check backend logs for the HTTP status and the OpenAI usage record.
-- The API uses one image edit call with two image inputs and a 1024×1536 JPEG output at medium quality.
+**Deploy is marked unhealthy on Railway.**
+`/health` reports `database: down`, or the app never booted. Check that
+`DATABASE_URL` is the `${{Postgres.DATABASE_URL}}` reference and look for a
+failed migration in the deploy logs — a migration error aborts startup by design.
 
-**TypeORM schema out of sync:**
-- In development: `synchronize: true` handles this automatically.
-- In production: create and apply a reviewed migration before deploying the schema change.
+**`uuid_generate_v4()` does not exist.**
+The initial migration creates the `uuid-ossp` extension. If it was skipped, run
+`CREATE EXTENSION IF NOT EXISTS "uuid-ossp";` against the database and redeploy.
+
+**OpenAI returns no image.**
+Check the key and model access, then the API logs for the HTTP status. The call
+sends two images and asks for a 1024×1536 JPEG.

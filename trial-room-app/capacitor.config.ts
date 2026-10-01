@@ -1,24 +1,18 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
+const localAndroidBuild = process.env['PHENAWA_ANDROID_LOCAL'] === '1';
+
 const config: CapacitorConfig = {
   appId: 'ai.phenawa.app',
   appName: 'Phenawa AI',
-  webDir: 'www',
-  plugins: {
-    Camera: {
-      permissions: {
-        ios: ['NSCameraUsageDescription', 'NSPhotoLibraryUsageDescription'],
-        android: ['CAMERA', 'READ_EXTERNAL_STORAGE', 'WRITE_EXTERNAL_STORAGE'],
-      },
-    },
-  },
+  webDir: 'www/browser',
   android: {
-    allowMixedContent: true,
+    allowMixedContent: localAndroidBuild,
   },
   server: {
     androidScheme: 'https',
+    cleartext: localAndroidBuild,
   },
 };
 
 export default config;
-
