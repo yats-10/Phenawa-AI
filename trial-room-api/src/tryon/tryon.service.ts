@@ -9,7 +9,7 @@ import { Repository, MoreThanOrEqual } from 'typeorm';
 import { User } from '../entities/user.entity';
 import { Fabric } from '../entities/fabric.entity';
 import { Generation } from '../entities/generation.entity';
-import { GeminiService } from './gemini.service';
+import { ImageGenerationService } from './image-generation.service';
 import { GenerateDto } from './dto/generate.dto';
 import { ConfigService } from '@nestjs/config';
 
@@ -22,14 +22,14 @@ export class TryonService {
     private readonly fabricRepository: Repository<Fabric>,
     @InjectRepository(Generation)
     private readonly generationRepository: Repository<Generation>,
-    private readonly geminiService: GeminiService,
+    private readonly imageGenerationService: ImageGenerationService,
     private readonly configService: ConfigService,
   ) {}
 
   async generate(
     user: User,
     dto: GenerateDto,
-  ): Promise<{ resultBase64: string; cached: boolean }> {
+  ): Promise<{ resultBase64: string }> {
     if (!dto.fabricId && !dto.fabricImageBase64) {
       throw new BadRequestException(
         'Provide either fabricId or fabricImageBase64',
@@ -59,41 +59,27 @@ export class TryonService {
       ? dto.personImageBase64.split(',')[1]!
       : dto.personImageBase64;
 
-    // 2. Check cache (only when using catalogue fabric)
-    if (resolvedFabricId) {
-      const cached = await this.generationRepository.findOne({
-        where: {
-          userId: user.id,
-          fabricId: resolvedFabricId,
-          garmentType: dto.garmentType,
-        },
-        order: { createdAt: 'DESC' },
-      });
-      if (cached?.resultBase64) {
-        return { resultBase64: cached.resultBase64, cached: true };
-      }
-    }
-
-    // 3. Call Gemini with base64 directly
-    const resultBase64 = await this.geminiService.generateTryon(
+    // Each customer photo needs its own result. A catalogue fabric alone is not
+    // a safe cache key, so never reuse a prior customer's generated image.
+    const resultBase64 = await this.imageGenerationService.generateTryon(
       personBase64,
       fabricBase64,
       dto.garmentType,
     );
 
-    // 4. Save generation record (with result for cache)
+    // Keep usage history without storing a customer's generated photo in SQL.
     const generation = this.generationRepository.create({
       userId: user.id,
       fabricId: resolvedFabricId,
       garmentType: dto.garmentType,
-      resultBase64: resolvedFabricId ? resultBase64 : null,
+      resultBase64: null,
     });
     await this.generationRepository.save(generation);
 
-    // 5. Check daily count and log warning if needed
+    // Check daily count and log warning if needed.
     await this.checkDailyThreshold(user.id);
 
-    return { resultBase64, cached: false };
+    return { resultBase64 };
   }
 
   async getTotalCount(userId: string): Promise<number> {

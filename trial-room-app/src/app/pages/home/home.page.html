@@ -131,7 +131,6 @@
     <div class="result-card" *ngIf="resultBase64">
       <div class="result-img-wrapper">
         <img [src]="'data:image/jpeg;base64,' + resultBase64" alt="Try-on result" class="result-img" (click)="showFullScreen = true" />
-        <span class="cached-badge" *ngIf="isCached">⚡ Cached</span>
         <span class="tap-hint">Tap image to enlarge</span>
       </div>
       <div class="result-actions">

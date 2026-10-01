@@ -22,7 +22,7 @@ export class TryonController {
   async generate(
     @CurrentUser() user: User,
     @Body() dto: GenerateDto,
-  ): Promise<{ resultBase64: string; cached: boolean }> {
+  ): Promise<{ resultBase64: string }> {
     return this.tryonService.generate(user, dto);
   }
 }

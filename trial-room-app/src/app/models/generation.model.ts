@@ -16,6 +16,4 @@ export interface GenerateRequest {
 
 export interface GenerateResponse {
   resultBase64: string;
-  cached: boolean;
 }
-

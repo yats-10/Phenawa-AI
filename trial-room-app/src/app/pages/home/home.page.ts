@@ -33,6 +33,7 @@ import { GarmentSelectorComponent } from '../../components/garment-selector/garm
 import { TryonService } from '../../services/tryon.service';
 import { AuthService } from '../../services/auth.service';
 import { FabricService } from '../../services/fabric.service';
+import { ImageService } from '../../services/image.service';
 import { Fabric } from '../../models/fabric.model';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -68,7 +69,6 @@ export class HomePage implements OnInit, OnDestroy {
 
   isLoading = false;
   resultBase64: string | null = null;
-  isCached = false;
 
   // Catalogue modal
   showCatalogueModal = false;
@@ -122,6 +122,7 @@ export class HomePage implements OnInit, OnDestroy {
     private readonly tryonService: TryonService,
     private readonly authService: AuthService,
     private readonly fabricService: FabricService,
+    private readonly imageService: ImageService,
     private readonly toastCtrl: ToastController,
     private readonly router: Router,
   ) {
@@ -212,7 +213,6 @@ export class HomePage implements OnInit, OnDestroy {
       });
 
       this.resultBase64 = response.resultBase64;
-      this.isCached = response.cached;
       this.todayCount++;
     } catch (error) {
       let message = 'Something went wrong. Please try again.';
@@ -293,8 +293,8 @@ export class HomePage implements OnInit, OnDestroy {
         source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
       });
       if (!photo.dataUrl) return;
-      const base64 = photo.dataUrl.split(',')[1] ?? '';
-      this.personPreviewUrl = photo.dataUrl;
+      const base64 = await this.imageService.compressImage(photo.dataUrl);
+      this.personPreviewUrl = this.imageService.base64ToDataUrl(base64);
       this.personImageBase64 = base64;
       this.resultBase64 = null;
     } catch (error) {
@@ -312,8 +312,8 @@ export class HomePage implements OnInit, OnDestroy {
         source: source === 'camera' ? CameraSource.Camera : CameraSource.Photos,
       });
       if (!photo.dataUrl) return;
-      const base64 = photo.dataUrl.split(',')[1] ?? '';
-      this.fabricPreviewUrl = photo.dataUrl;
+      const base64 = await this.imageService.compressImage(photo.dataUrl);
+      this.fabricPreviewUrl = this.imageService.base64ToDataUrl(base64);
       this.fabricImageBase64 = base64;
       this.selectedFabricId = null;
       this.selectedFabricName = null;

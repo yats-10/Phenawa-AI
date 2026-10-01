@@ -6,8 +6,7 @@
 
 - Node.js 20+ and npm 10+
 - PostgreSQL 14+ (local or hosted)
-- A Google Cloud project with **Gemini API** enabled
-- A Cloudflare account with **R2** enabled and a bucket created
+- An OpenAI API account with access to GPT Image 2.5
 - (Optional) Railway account for backend hosting
 - (Optional) Vercel account for frontend hosting
 - Android Studio (for Android APK build)
@@ -39,30 +38,21 @@ DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/trial_room
 JWT_SECRET=change_me_to_a_long_random_secret_at_least_64_chars
 ADMIN_JWT_SECRET=change_me_to_a_different_long_random_secret
 
-# Google Gemini
-GEMINI_API_KEY=AIza...
-
-# Cloudflare R2
-R2_ACCOUNT_ID=your_cloudflare_account_id
-R2_ACCESS_KEY_ID=your_r2_access_key
-R2_SECRET_ACCESS_KEY=your_r2_secret_key
-R2_BUCKET_NAME=trial-room-images
-R2_PUBLIC_URL=https://pub-xxxxxxxxxxxx.r2.dev
+# OpenAI image editing
+OPENAI_API_KEY=your_openai_api_key
+OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
 
 # Admin seed
 ADMIN_SEED_SECRET=pick_a_strong_seed_secret
-ADMIN_USERNAME=admin
-ADMIN_PASSWORD=ChangeMe@1234
 
 # App
-PORT=3000
+PORT=3001
 NODE_ENV=development
 ```
 
 **Getting each value:**
 - `DATABASE_URL`: Your PostgreSQL connection string.
-- `GEMINI_API_KEY`: [Google AI Studio](https://aistudio.google.com/app/apikey) → Create API key.
-- R2 values: Cloudflare Dashboard → R2 → your bucket → Manage R2 API Tokens. `R2_PUBLIC_URL` is the bucket's public URL (enable public access in the bucket settings).
+- `OPENAI_API_KEY`: [OpenAI API keys](https://platform.openai.com/api-keys) → Create API key. The default model is `gpt-image-2.5-sunburst`; set `OPENAI_IMAGE_MODEL=gpt-image-2.5-flare` for a faster alternative.
 - Generate secure secrets: `node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"`
 
 ### 2.3 Create the database
@@ -85,23 +75,22 @@ npm run start:dev
 Then in a new terminal, seed the admin:
 
 ```bash
-curl -X POST http://localhost:3000/admin/seed \
-  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value"
+curl -X POST http://localhost:3001/admin/seed \
+  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"choose_a_strong_password"}'
 ```
 
 You should get:
 ```json
-{ "message": "Admin seeded successfully" }
+{ "message": "Admin account created" }
 ```
 
-> Run this only once. Calling it again with the same username returns a safe "already exists" message.
+> Run this only once. A second seed request is rejected after the first admin exists.
 
 ### 2.5 Verify the API is running
 
-```bash
-curl http://localhost:3000/health
-# or just open http://localhost:3000 in a browser
-```
+Use the admin login endpoint with the credentials you just created. This project does not currently expose a public health endpoint.
 
 ---
 
@@ -116,7 +105,7 @@ npm install
 
 ### 3.2 Point to your backend
 
-For local development, `src/environments/environment.ts` already points to `http://localhost:3000`.
+For local development, `src/environments/environment.ts` already points to `http://localhost:3001`.
 
 For production, edit `src/environments/environment.prod.ts`:
 
@@ -131,8 +120,11 @@ export const environment = {
 
 ```bash
 npm start
-# Opens at http://localhost:8100
+# Open http://localhost:4300 in your browser
 ```
+
+Open the URL shown by the development server. Do not open `src/app/pages/home/home.page.html` as a file: it is an Angular template and will show raw `{{ ... }}` placeholders without the running app.
+The separate admin sign-in is at `http://localhost:4300/admin/login`.
 
 ---
 
@@ -163,17 +155,11 @@ Dashboard → your project → Variables → add all values from your `.env` **e
 ```
 JWT_SECRET
 ADMIN_JWT_SECRET
-GEMINI_API_KEY
-R2_ACCOUNT_ID
-R2_ACCESS_KEY_ID
-R2_SECRET_ACCESS_KEY
-R2_BUCKET_NAME
-R2_PUBLIC_URL
+OPENAI_API_KEY
+OPENAI_IMAGE_MODEL=gpt-image-2.5-sunburst
 ADMIN_SEED_SECRET
-ADMIN_USERNAME
-ADMIN_PASSWORD
 NODE_ENV=production
-PORT=3000
+PORT=3001
 ```
 
 ### 4.4 Create `railway.toml` (optional — manual config)
@@ -190,7 +176,7 @@ restartPolicyType = "on_failure"
 
 ### 4.5 Set `NODE_ENV=production`
 
-In production, TypeORM sets `synchronize: false`. Run migrations manually if needed, or temporarily set `NODE_ENV=development` after a schema change, then switch back.
+In production, TypeORM sets `synchronize: false`. Apply reviewed database migrations before deploying schema changes; do not switch a production server to development mode to synchronize tables.
 
 ### 4.6 Seed admin on Railway
 
@@ -198,7 +184,9 @@ After deployment, get your Railway public URL (e.g. `https://xxx.up.railway.app`
 
 ```bash
 curl -X POST https://xxx.up.railway.app/admin/seed \
-  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value"
+  -H "x-seed-secret: your_ADMIN_SEED_SECRET_value" \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"choose_a_strong_password"}'
 ```
 
 ---
@@ -309,7 +297,7 @@ Output: `android/app/build/outputs/apk/release/app-release.apk`
 2. **Shopkeeper** logs in on mobile with their username/password.
 3. Shopkeeper captures/uploads a customer photo and a fabric photo (or selects from their catalogue).
 4. Selects garment type → taps "Try It On".
-5. App sends both images to the backend → Gemini generates the try-on → result is stored in R2 → displayed in-app.
+5. App sends both images to the backend → OpenAI edits them into one try-on image → result is returned to the app. Generation metadata is recorded in PostgreSQL; the image itself is not saved there.
 6. Shopkeeper can save to gallery or share directly with the customer.
 7. Admin monitors daily usage from the dashboard.
 
@@ -321,15 +309,9 @@ Output: `android/app/build/outputs/apk/release/app-release.apk`
 - [ ] `DATABASE_URL`
 - [ ] `JWT_SECRET`
 - [ ] `ADMIN_JWT_SECRET`
-- [ ] `GEMINI_API_KEY`
-- [ ] `R2_ACCOUNT_ID`
-- [ ] `R2_ACCESS_KEY_ID`
-- [ ] `R2_SECRET_ACCESS_KEY`
-- [ ] `R2_BUCKET_NAME`
-- [ ] `R2_PUBLIC_URL`
+- [ ] `OPENAI_API_KEY`
+- [ ] `OPENAI_IMAGE_MODEL` (optional; defaults to `gpt-image-2.5-sunburst`)
 - [ ] `ADMIN_SEED_SECRET`
-- [ ] `ADMIN_USERNAME`
-- [ ] `ADMIN_PASSWORD`
 - [ ] `NODE_ENV`
 
 ### Frontend
@@ -346,15 +328,11 @@ The backend enables CORS for all origins by default (see `main.ts`). If you rest
 - Make sure `@capacitor/camera` is in `package.json` and synced: `npx cap sync android`
 - Camera permission must be granted on first use
 
-**Gemini returns no image:**
-- Verify `GEMINI_API_KEY` is valid and the Gemini API is enabled in your Google Cloud project
-- The model `gemini-2.0-flash-preview-image-generation` must be available in your region
-- Check backend logs for the full error response from Google's API
-
-**Images not loading after upload:**
-- Verify `R2_PUBLIC_URL` is the correct public bucket URL (not the API URL)
-- Ensure the R2 bucket has **Public Access** enabled in Cloudflare dashboard
+**OpenAI returns no image:**
+- Verify `OPENAI_API_KEY` is valid and your organization has access to GPT Image models.
+- Check backend logs for the HTTP status and the OpenAI usage record.
+- The API uses one image edit call with two image inputs and a 1024×1536 JPEG output at medium quality.
 
 **TypeORM schema out of sync:**
-- In development: `synchronize: true` handles this automatically
-- In production: temporarily set `NODE_ENV=development`, restart once to apply changes, then set back to `production`
+- In development: `synchronize: true` handles this automatically.
+- In production: create and apply a reviewed migration before deploying the schema change.
