@@ -11,11 +11,11 @@ Monorepo with two deployables:
 
 ## 1. Prerequisites
 
-- Node.js 20.x and npm 10+ (both apps pin Node 20 via `.nvmrc` and `engines`)
+- Node.js 20.x for the API and Node.js 22.x for the Android app toolchain
 - PostgreSQL 14+ for local development
 - An OpenAI API key with access to GPT Image models
 - Railway and Vercel accounts
-- Android Studio + JDK 17, only for the APK build
+- Java 21 and Android SDK Platform 36 + Build Tools 36 for Android builds
 
 ---
 
@@ -195,28 +195,65 @@ CORS only constrains browsers.
 
 ---
 
-## 6. Android APK (Capacitor)
+## 6. Android app (Capacitor)
+
+The native project is in `trial-room-app/android` and targets Android API 36.
+Use Node 22, Java 21, Android SDK Platform 36 and Build Tools 36.
+On this Mac, the command-line toolchain installed for the build is available with:
+
+```bash
+export JAVA_HOME=/opt/homebrew/opt/openjdk@21/libexec/openjdk.jdk/Contents/Home
+export ANDROID_HOME=/opt/homebrew/share/android-commandlinetools
+export PATH="$ANDROID_HOME/platform-tools:$PATH"
+```
+
+### Local emulator test
+
+Start the API on your Mac at port 3001, then:
 
 ```bash
 cd trial-room-app
-npm run build:prod
-npx cap sync android
+npm ci
+npm run android:apk:local
+```
+
+The installable debug APK is at
+`android/app/build/outputs/apk/debug/app-debug.apk`. This build calls
+`http://10.0.2.2:3001`, which maps to the host Mac only inside an Android
+emulator. The debug manifest allows this HTTP connection. It will not work on
+a physical phone.
+
+### Local Android phone over USB
+
+Enable USB debugging on the phone, connect it to the Mac, and keep the local API
+running on port 3001. Then:
+
+```bash
+cd trial-room-app
+npm run android:apk:usb
+adb reverse tcp:3001 tcp:3001
+adb install -r android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+The phone build calls `http://localhost:3001` through the USB reverse tunnel.
+Repeat `adb reverse` after reconnecting the phone. This is a debug-only build;
+it will not reach the API when the phone is disconnected.
+
+### Physical device or Play Store build
+
+Deploy and verify a public HTTPS API first. Set that URL when syncing the app:
+
+```bash
+cd trial-room-app
+PHENAWA_API_URL=https://your-api.example.com npm run android:sync:release
 npx cap open android
 ```
 
-Verify `AndroidManifest.xml` has:
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<uses-permission android:name="android.permission.CAMERA" />
-<uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-<uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
-```
-
-In Android Studio: **Build → Generate Signed Bundle/APK → APK** for a release
-build. Output lands in `android/app/build/outputs/apk/release/`.
-
-The APK talks to the same Railway API and needs no CORS entry.
+In Android Studio, use **Build → Generate Signed Bundle / APK**. Choose an
+Android App Bundle (`.aab`) for Google Play or an APK for direct distribution.
+Store the signing keystore outside Git. Release builds use HTTPS only. Test
+camera, gallery selection, generation, save to gallery, and sharing on a real
+device before distributing.
 
 ---
 
@@ -251,8 +288,8 @@ The APK talks to the same Railway API and needs no CORS entry.
    to the app. Generation metadata is stored in Postgres.
 6. Shopkeeper saves or shares the result.
 
-Images are stored base64 in Postgres, not on disk — the container filesystem is
-ephemeral on Railway and nothing is written to it.
+Catalogue fabric images are stored base64 in Postgres. Generated customer
+images are returned to the app and are not saved in the database.
 
 ---
 

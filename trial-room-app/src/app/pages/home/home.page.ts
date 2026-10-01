@@ -34,6 +34,7 @@ import { TryonService } from '../../services/tryon.service';
 import { AuthService } from '../../services/auth.service';
 import { FabricService } from '../../services/fabric.service';
 import { ImageService } from '../../services/image.service';
+import { PhotoGalleryService } from '../../services/photo-gallery.service';
 import { Fabric } from '../../models/fabric.model';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -123,6 +124,7 @@ export class HomePage implements OnInit, OnDestroy {
     private readonly authService: AuthService,
     private readonly fabricService: FabricService,
     private readonly imageService: ImageService,
+    private readonly photoGalleryService: PhotoGalleryService,
     private readonly toastCtrl: ToastController,
     private readonly router: Router,
   ) {
@@ -233,12 +235,11 @@ export class HomePage implements OnInit, OnDestroy {
   async saveToGallery(): Promise<void> {
     if (!this.resultBase64) return;
     try {
-      await Filesystem.writeFile({
-        path: `trial-room-${Date.now()}.jpg`,
-        data: this.resultBase64,
-        directory: Directory.Cache,
-      });
-      await this.showToast('Image saved to gallery!', 'success');
+      const destination = await this.photoGalleryService.save(this.resultBase64);
+      await this.showToast(
+        destination === 'gallery' ? 'Image saved to gallery!' : 'Image downloaded!',
+        'success',
+      );
     } catch {
       await this.showToast('Failed to save image.', 'danger');
     }
