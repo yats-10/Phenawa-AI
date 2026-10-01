@@ -1,3 +1,0 @@
-# Pin the Node major version so Railway builds match local and Nest's supported range.
-[phases.setup]
-nixPkgs = ["nodejs_20"]
