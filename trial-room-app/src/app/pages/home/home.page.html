@@ -114,15 +114,20 @@
       <div class="garment-types" *ngIf="selectedGender">
         <p class="section-label">SELECT GARMENT TYPE</p>
         <div class="garment-grid">
-          <div
+          <button
+            type="button"
             *ngFor="let g of (selectedGender === 'male' ? maleGarments : femaleGarments)"
             class="garment-item"
             [class.selected]="selectedGarment === g.value"
+            [attr.aria-pressed]="selectedGarment === g.value"
             (click)="onGarmentSelected(g.value)"
           >
-            <span class="garment-emoji">{{ g.emoji }}</span>
+            <span class="garment-art" aria-hidden="true">
+              <img *ngIf="g.icon" class="garment-icon" [src]="g.icon" alt="" />
+              <span *ngIf="g.emoji" class="garment-emoji">{{ g.emoji }}</span>
+            </span>
             <span class="garment-name">{{ g.label }}</span>
-          </div>
+          </button>
         </div>
       </div>
     </div>

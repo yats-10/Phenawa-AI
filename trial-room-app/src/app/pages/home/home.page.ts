@@ -38,6 +38,13 @@ import { PhotoGalleryService } from '../../services/photo-gallery.service';
 import { Fabric } from '../../models/fabric.model';
 import { HttpErrorResponse } from '@angular/common/http';
 
+interface GarmentOption {
+  label: string;
+  value: string;
+  emoji?: string;
+  icon?: string;
+}
+
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
@@ -99,24 +106,24 @@ export class HomePage implements OnInit, OnDestroy {
     this.loadingMessage = this.loadingMessages[this.loadingMsgIndex]!;
   }, 5000);
 
-  maleGarments = [
+  maleGarments: GarmentOption[] = [
     { emoji: '👔', label: 'Shirt', value: 'Shirt (Men)' },
     { emoji: '👖', label: 'Pant', value: 'Pant (Men)' },
-    { emoji: '🥷', label: 'Kurta', value: 'Kurta (Men)' },
-    { emoji: '🎽', label: 'Sherwani', value: 'Sherwani' },
-    { emoji: '👘', label: 'Pajama', value: 'Pajama' },
+    { icon: 'assets/garments/kurta.png', label: 'Kurta', value: 'Kurta (Men)' },
+    { icon: 'assets/garments/sherwani.png', label: 'Sherwani', value: 'Sherwani' },
+    { icon: 'assets/garments/pajama.png', label: 'Pajama', value: 'Pajama' },
     { emoji: '🤵', label: 'Suit', value: 'Suit (Men)' },
-    { emoji: '🧥', label: 'Blazer', value: 'Blazer' },
+    { icon: 'assets/garments/blazer.png', label: 'Blazer', value: 'Blazer' },
     { emoji: '🧥', label: 'Coat', value: 'Coat' },
   ];
 
-  femaleGarments = [
-    { emoji: '👗', label: 'Kurti', value: 'Kurti (Women)' },
-    { emoji: '🥻', label: 'Salwar Kameez', value: 'Salwar Kameez' },
-    { emoji: '💃', label: 'Lehenga', value: 'Lehenga' },
-    { emoji: '🩱', label: 'Anarkali', value: 'Anarkali' },
+  femaleGarments: GarmentOption[] = [
+    { icon: 'assets/garments/kurti.png', label: 'Kurti', value: 'Kurti (Women)' },
+    { icon: 'assets/garments/salwar-kameez.png', label: 'Salwar Kameez', value: 'Salwar Kameez' },
+    { icon: 'assets/garments/lehenga.png', label: 'Lehenga', value: 'Lehenga' },
+    { icon: 'assets/garments/anarkali.png', label: 'Anarkali', value: 'Anarkali' },
     { emoji: '👚', label: 'Kurti Short', value: 'Kurti Short' },
-    { emoji: '🪭', label: 'Suit', value: 'Suit (Ladies)' },
+    { icon: 'assets/garments/ladies-suit.png', label: 'Suit', value: 'Suit (Ladies)' },
   ];
 
   constructor(
