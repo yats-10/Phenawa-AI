@@ -13,6 +13,13 @@
 }
 .back-btn { border: 0; background: none; color: #FF8C00; font: 600 15px 'DM Sans', sans-serif; }
 .page-body { max-width: 680px; margin: auto; padding: 16px 20px 40px; }
+.popular-card { background: white; border-radius: 14px; padding: 15px; margin-bottom: 16px; box-shadow: 0 2px 10px rgba(0,0,0,.05);
+  h2 { margin: 0 0 10px; font-size: 15px; color: #222; }
+}
+.popular-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-top: 1px solid #f0f0f0; font-size: 13px; }
+.popular-rank { color: #FF8C00; font-weight: 700; width: 18px; }
+.popular-name { color: #333; flex: 1; text-align: left; }
+.popular-count { color: #777; white-space: nowrap; }
 .filter-row { display: flex; gap: 8px; margin-bottom: 16px;
   button { flex: 1; padding: 11px 4px; border: 1px solid #ddd; border-radius: 10px; background: white; color: #555; font: 600 13px 'DM Sans', sans-serif; }
   button.active { background: #FF8C00; border-color: #FF8C00; color: white; }
@@ -32,8 +39,7 @@
 .card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px;
   strong { font-size: 16px; }
 }
-.status { padding: 5px 9px; border-radius: 20px; background: #FFF3E5; color: #A45B00; font-size: 11px; font-weight: 700; }
-.status.ordered { background: #E9F7EF; color: #277A45; }
+.card-phone { color: #888; font-size: 12px; white-space: nowrap; }
 .card-sub { font-size: 13px; margin-top: 8px; color: #555; }
 .card-bottom { font-size: 12px; margin-top: 7px; color: #999; }
 
@@ -44,9 +50,8 @@
   p { margin: 4px 0 0; font-size: 13px; color: #777; }
   button { border: 0; border-radius: 50%; background: #eee; width: 32px; height: 32px; }
 }
-.result-preview, .fabric-preview { display: block; width: 100%; max-height: 380px; object-fit: contain; background: #f6f6f6; border-radius: 12px; margin-bottom: 12px; }
+.fabric-preview { display: block; width: 100%; object-fit: contain; background: #f6f6f6; border-radius: 12px; margin-bottom: 12px; }
 .fabric-preview { max-height: 180px; }
-.preview-note, .consent-note { color: #777; font-size: 12px; margin: 8px 0 16px; }
 .detail-row { display: flex; justify-content: space-between; gap: 16px; border-bottom: 1px solid #eee; padding: 11px 0; font-size: 13px;
   span { color: #777; }
   strong { color: #333; text-align: right; }
@@ -64,4 +69,5 @@
   h3 { font-size: 14px; margin: 0 0 8px; }
   button { display: flex; justify-content: space-between; gap: 10px; width: 100%; padding: 11px 0; border: 0; background: none; border-bottom: 1px solid #eee; text-align: left; color: #444; font: 13px 'DM Sans', sans-serif; }
   span { color: #888; }
+  button.current { color: #A45B00; font-weight: 700; }
 }

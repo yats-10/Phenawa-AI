@@ -627,15 +627,9 @@ ion-content {
   button.selected { border-color: #FF8C00; background: #FFF3E5; color: #9A5100; }
 }
 
-.enquiry-check {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 13px;
-  color: #555;
-
-  input { width: 18px; height: 18px; flex: none; accent-color: #FF8C00; }
-}
+.lookup-note { margin: -6px 0 0; font-size: 13px; color: #777; }
+.lookup-note.found { color: #277A45; font-weight: 600; }
+.lookup-retry { border: 0; background: none; color: #A45B00; text-align: left; font: 500 13px 'DM Sans', sans-serif; padding: 0; }
 
 .enquiry-submit {
   border: none;

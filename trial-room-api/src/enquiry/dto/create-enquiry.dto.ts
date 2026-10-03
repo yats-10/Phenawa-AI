@@ -1,5 +1,4 @@
 import {
-  IsBoolean,
   IsIn,
   IsInt,
   IsNotEmpty,
@@ -15,10 +14,10 @@ export class CreateEnquiryDto {
   @IsUUID()
   generationId!: string;
 
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   @MaxLength(100)
-  customerName!: string;
+  customerName?: string;
 
   @IsString()
   @IsNotEmpty()
@@ -37,13 +36,4 @@ export class CreateEnquiryDto {
   @MaxLength(1000)
   notes?: string | null;
 
-  @IsBoolean()
-  whatsappOptIn!: boolean;
-
-  @IsBoolean()
-  savePreview!: boolean;
-
-  @IsOptional()
-  @IsString()
-  resultBase64?: string;
 }

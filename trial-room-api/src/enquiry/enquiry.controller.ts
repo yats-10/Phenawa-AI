@@ -21,6 +21,11 @@ export class EnquiryController {
     return this.enquiryService.findAll(user.id, status);
   }
 
+  @Get('popular-fabrics')
+  popularFabrics(@CurrentUser() user: User) {
+    return this.enquiryService.popularFabrics(user.id);
+  }
+
   @Get(':id')
   findOne(@CurrentUser() user: User, @Param('id', ParseUUIDPipe) id: string) {
     return this.enquiryService.findOne(user.id, id);

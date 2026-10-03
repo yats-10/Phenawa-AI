@@ -1,11 +1,20 @@
 <ion-content class="enquiries-content" [fullscreen]="true">
   <div class="page-header">
     <button class="back-btn" (click)="goBack()">← Back</button>
-    <h1>Customer Enquiries</h1>
+    <h1>Customers</h1>
     <span></span>
   </div>
 
   <div class="page-body">
+    <div class="popular-card" *ngIf="popularFabrics.length > 0">
+      <h2>Most popular fabrics</h2>
+      <div class="popular-row" *ngFor="let fabric of popularFabrics; let rank = index">
+        <span class="popular-rank">{{ rank + 1 }}</span>
+        <span class="popular-name">{{ fabric.fabricName }}</span>
+        <span class="popular-count">{{ fabric.customers }} {{ fabric.customers === 1 ? 'customer' : 'customers' }}</span>
+      </div>
+    </div>
+
     <div class="filter-row" aria-label="Filter enquiries">
       <button [class.active]="filter === 'all'" (click)="setFilter('all')">All</button>
       <button [class.active]="filter === 'interested'" (click)="setFilter('interested')">Interested</button>
@@ -13,19 +22,19 @@
     </div>
 
     <p class="loading-note" *ngIf="isLoading">Loading enquiries...</p>
-    <div class="empty-state" *ngIf="!isLoading && enquiries.length === 0">
+    <div class="empty-state" *ngIf="!isLoading && customers.length === 0">
       <span>👥</span>
       <h2>No enquiries yet</h2>
       <p>Save an enquiry after a try-on to see it here.</p>
     </div>
 
-    <button class="enquiry-card" *ngFor="let enquiry of enquiries" (click)="openDetail(enquiry.id)">
+    <button class="enquiry-card" *ngFor="let customer of customers" (click)="openDetail(customer.latestEnquiryId)">
       <div class="card-top">
-        <strong>{{ enquiry.customerName }}</strong>
-        <span class="status" [class.ordered]="enquiry.status === 'ordered'">{{ enquiry.status | titlecase }}</span>
+        <strong>{{ customer.name }}</strong>
+        <span class="card-phone">+{{ customer.phone }}</span>
       </div>
-      <span class="card-sub">{{ enquiry.garmentType }} · {{ enquiry.fabricName || 'Fabric' }}</span>
-      <span class="card-bottom">{{ enquiry.createdAt | date:'dd MMM yyyy' }}<span *ngIf="enquiry.estimatedPrice !== null"> · ₹{{ enquiry.estimatedPrice }}</span></span>
+      <span class="card-sub">{{ customer.interested }} interested · {{ customer.ordered }} ordered</span>
+      <span class="card-bottom">Last enquiry {{ customer.latestDate | date:'dd MMM yyyy' }}</span>
     </button>
   </div>
 </ion-content>
@@ -37,9 +46,7 @@
       <button type="button" (click)="closeDetail()" aria-label="Close">✕</button>
     </div>
 
-    <img *ngIf="selected.resultBase64" class="result-preview" [src]="'data:image/jpeg;base64,' + selected.resultBase64" alt="Saved try-on preview" />
-    <img *ngIf="!selected.resultBase64 && selected.fabricImageBase64" class="fabric-preview" [src]="'data:image/jpeg;base64,' + selected.fabricImageBase64" alt="Selected fabric" />
-    <p class="preview-note" *ngIf="!selected.resultBase64">The try-on image was not saved for this enquiry.</p>
+    <img *ngIf="selected.fabricImageBase64" class="fabric-preview" [src]="'data:image/jpeg;base64,' + selected.fabricImageBase64" alt="Selected fabric" />
 
     <div class="detail-row"><span>Status</span><strong>{{ selected.status | titlecase }}</strong></div>
     <div class="detail-row"><span>Garment</span><strong>{{ selected.garmentType }}</strong></div>
@@ -51,14 +58,19 @@
     <div class="detail-actions">
       <button *ngIf="selected.status === 'interested'" (click)="changeStatus('ordered')" [disabled]="isUpdating">Mark Ordered</button>
       <button *ngIf="selected.status === 'ordered'" (click)="changeStatus('interested')" [disabled]="isUpdating">Mark Interested</button>
-      <a *ngIf="selected.whatsappOptIn" [href]="whatsappUrl(selected)" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+      <a [href]="whatsappUrl(selected)" target="_blank" rel="noopener noreferrer">WhatsApp</a>
     </div>
-    <p class="consent-note" *ngIf="!selected.whatsappOptIn">WhatsApp follow-up was not agreed to for this customer.</p>
 
-    <div class="history" *ngIf="selected.customerHistory.length > 1">
-      <h3>Other enquiries from this customer</h3>
-      <button *ngFor="let item of selected.customerHistory" [hidden]="item.id === selected.id" (click)="openDetail(item.id)">
-        {{ item.garmentType }} · {{ item.fabricName || 'Fabric' }} <span>{{ item.status | titlecase }}</span>
+    <div class="history" *ngIf="interestedChoices.length > 0">
+      <h3>Interested fabrics</h3>
+      <button *ngFor="let item of interestedChoices" [class.current]="item.id === selected.id" (click)="openDetail(item.id)">
+        {{ item.fabricName || 'Fabric' }} · {{ item.garmentType }} <span>{{ item.createdAt | date:'dd MMM' }}</span>
+      </button>
+    </div>
+    <div class="history" *ngIf="orderedChoices.length > 0">
+      <h3>Ordered fabrics</h3>
+      <button *ngFor="let item of orderedChoices" [class.current]="item.id === selected.id" (click)="openDetail(item.id)">
+        {{ item.fabricName || 'Fabric' }} · {{ item.garmentType }} <span>{{ item.createdAt | date:'dd MMM' }}</span>
       </button>
     </div>
   </div>

@@ -1,11 +1,10 @@
 import {
   BadRequestException,
-  ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, IsNull, Repository } from 'typeorm';
 import { Customer } from '../entities/customer.entity';
 import { Enquiry, EnquiryStatus } from '../entities/enquiry.entity';
 import { Fabric } from '../entities/fabric.entity';
@@ -32,7 +31,6 @@ function summary(enquiry: Enquiry) {
     customerId: enquiry.customerId,
     customerName: enquiry.customer.name,
     customerPhone: enquiry.customer.phone,
-    whatsappOptIn: enquiry.customer.whatsappOptIn,
     fabricId: enquiry.fabricId,
     fabricName: enquiry.fabricName,
     garmentType: enquiry.garmentType,
@@ -47,6 +45,8 @@ function summary(enquiry: Enquiry) {
 @Injectable()
 export class EnquiryService {
   constructor(
+    @InjectRepository(Customer)
+    private readonly customers: Repository<Customer>,
     @InjectRepository(Enquiry)
     private readonly enquiries: Repository<Enquiry>,
     @InjectRepository(Fabric)
@@ -54,10 +54,16 @@ export class EnquiryService {
     private readonly dataSource: DataSource,
   ) {}
 
+  async lookupCustomer(userId: string, phoneInput: string) {
+    const phone = normalizeIndianPhone(phoneInput);
+    const customer = await this.customers.findOne({ where: { userId, phone } });
+    return customer
+      ? { exists: true, customer: { id: customer.id, name: customer.name, phone: customer.phone } }
+      : { exists: false, customer: null };
+  }
+
   async create(userId: string, dto: CreateEnquiryDto) {
     const phone = normalizeIndianPhone(dto.customerPhone);
-    const customerName = dto.customerName.trim();
-    if (!customerName) throw new BadRequestException('Customer name is required.');
 
     const result = await this.dataSource.transaction(async (manager) => {
       const generation = await manager.findOne(Generation, {
@@ -65,34 +71,46 @@ export class EnquiryService {
         relations: { fabric: true },
       });
       if (!generation) throw new NotFoundException('Try-on not found.');
-      if (await manager.exists(Enquiry, { where: { generationId: generation.id } })) {
-        throw new ConflictException('This try-on already has an enquiry.');
+      const sameGeneration = await manager.findOne(Enquiry, {
+        where: { generationId: generation.id, userId },
+      });
+      if (sameGeneration) {
+        return sameGeneration;
       }
 
-      let customer = await manager.findOne(Customer, { where: { userId, phone } });
-      if (customer) {
-        customer.name = customerName;
-        customer.whatsappOptIn = dto.whatsappOptIn;
-      } else {
+      let customer = await manager.findOne(Customer, {
+        where: { userId, phone },
+        lock: { mode: 'pessimistic_write' },
+      });
+      if (!customer) {
+        const customerName = dto.customerName?.trim();
+        if (!customerName) {
+          throw new BadRequestException('Customer name is required for a new mobile number.');
+        }
         customer = manager.create(Customer, {
           userId,
           name: customerName,
           phone,
-          whatsappOptIn: dto.whatsappOptIn,
         });
+        customer = await manager.save(Customer, customer);
       }
-      customer = await manager.save(Customer, customer);
 
-      if (dto.savePreview) {
-        const bytes = Buffer.from(dto.resultBase64 ?? '', 'base64');
-        if (
-          !bytes.length || bytes.length > 8 * 1024 * 1024 ||
-          bytes[0] !== 0xff || bytes[1] !== 0xd8
-        ) {
-          throw new BadRequestException('Preview must be a JPEG under 8 MB.');
-        }
-        generation.resultBase64 = dto.resultBase64!;
-        await manager.save(Generation, generation);
+      // Keep one fabric/garment choice per customer. An order takes precedence
+      // over an earlier interested status; repeat try-ons do not inflate stats.
+      const existingChoice = await manager.findOne(Enquiry, {
+        where: {
+          userId,
+          customerId: customer.id,
+          fabricId: generation.fabricId ?? IsNull(),
+          garmentType: generation.garmentType,
+        },
+        order: { createdAt: 'DESC' },
+      });
+      if (existingChoice) {
+        if (dto.status === 'ordered') existingChoice.status = 'ordered';
+        if (dto.estimatedPrice !== undefined) existingChoice.estimatedPrice = dto.estimatedPrice;
+        if (dto.notes?.trim()) existingChoice.notes = dto.notes.trim();
+        return manager.save(Enquiry, existingChoice);
       }
 
       return manager.save(Enquiry, manager.create(Enquiry, {
@@ -125,7 +143,7 @@ export class EnquiryService {
   async findOne(userId: string, id: string) {
     const enquiry = await this.enquiries.findOne({
       where: { id, userId },
-      relations: { customer: true, generation: true },
+      relations: { customer: true },
     });
     if (!enquiry) throw new NotFoundException('Enquiry not found.');
     const [fabric, history] = await Promise.all([
@@ -140,10 +158,34 @@ export class EnquiryService {
     ]);
     return {
       ...summary(enquiry),
-      resultBase64: enquiry.generation.resultBase64,
       fabricImageBase64: fabric?.imageBase64 ?? null,
       customerHistory: history.map(summary),
     };
+  }
+
+  async popularFabrics(userId: string) {
+    const rows = await this.enquiries
+      .createQueryBuilder('enquiry')
+      .select('enquiry.fabricId', 'fabricId')
+      .addSelect('enquiry.fabricName', 'fabricName')
+      .addSelect('COUNT(DISTINCT enquiry.customerId)', 'customers')
+      .addSelect("COUNT(DISTINCT CASE WHEN enquiry.status = 'interested' THEN enquiry.customerId END)", 'interested')
+      .addSelect("COUNT(DISTINCT CASE WHEN enquiry.status = 'ordered' THEN enquiry.customerId END)", 'ordered')
+      .where('enquiry.userId = :userId', { userId })
+      .andWhere('enquiry.fabricId IS NOT NULL')
+      .groupBy('enquiry.fabricId')
+      .addGroupBy('enquiry.fabricName')
+      .orderBy('customers', 'DESC')
+      .addOrderBy('ordered', 'DESC')
+      .limit(5)
+      .getRawMany<{ fabricId: string; fabricName: string; customers: string; interested: string; ordered: string }>();
+    return rows.map((row) => ({
+      fabricId: row.fabricId,
+      fabricName: row.fabricName,
+      customers: Number(row.customers),
+      interested: Number(row.interested),
+      ordered: Number(row.ordered),
+    }));
   }
 
   async update(userId: string, id: string, dto: UpdateEnquiryDto) {

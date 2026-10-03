@@ -3,10 +3,20 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, ToastController } from '@ionic/angular/standalone';
 import { Subscription } from 'rxjs';
-import { EnquiryDetail, EnquiryStatus, EnquirySummary } from '../../models/enquiry.model';
+import { EnquiryDetail, EnquiryStatus, EnquirySummary, PopularFabric } from '../../models/enquiry.model';
 import { EnquiryService } from '../../services/enquiry.service';
 
 type Filter = 'all' | EnquiryStatus;
+
+interface CustomerCard {
+  id: string;
+  name: string;
+  phone: string;
+  latestEnquiryId: string;
+  latestDate: string;
+  interested: number;
+  ordered: number;
+}
 
 @Component({
   selector: 'app-enquiries',
@@ -18,6 +28,7 @@ type Filter = 'all' | EnquiryStatus;
 export class EnquiriesPage implements OnInit, OnDestroy {
   filter: Filter = 'all';
   enquiries: EnquirySummary[] = [];
+  popularFabrics: PopularFabric[] = [];
   selected: EnquiryDetail | null = null;
   isLoading = false;
   isUpdating = false;
@@ -39,6 +50,36 @@ export class EnquiriesPage implements OnInit, OnDestroy {
 
   ionViewWillEnter(): void {
     void this.loadEnquiries();
+    void this.loadPopularFabrics();
+  }
+
+  get customers(): CustomerCard[] {
+    const cards = new Map<string, CustomerCard>();
+    for (const enquiry of this.enquiries) {
+      let card = cards.get(enquiry.customerId);
+      if (!card) {
+        card = {
+          id: enquiry.customerId,
+          name: enquiry.customerName,
+          phone: enquiry.customerPhone,
+          latestEnquiryId: enquiry.id,
+          latestDate: enquiry.createdAt,
+          interested: 0,
+          ordered: 0,
+        };
+        cards.set(enquiry.customerId, card);
+      }
+      card[enquiry.status]++;
+    }
+    return Array.from(cards.values());
+  }
+
+  get interestedChoices(): EnquirySummary[] {
+    return this.selected?.customerHistory.filter((item) => item.status === 'interested') ?? [];
+  }
+
+  get orderedChoices(): EnquirySummary[] {
+    return this.selected?.customerHistory.filter((item) => item.status === 'ordered') ?? [];
   }
 
   ngOnDestroy(): void {
@@ -60,6 +101,14 @@ export class EnquiriesPage implements OnInit, OnDestroy {
       await this.toast('Failed to load enquiries.', 'danger');
     } finally {
       this.isLoading = false;
+    }
+  }
+
+  async loadPopularFabrics(): Promise<void> {
+    try {
+      this.popularFabrics = await this.enquiryService.popularFabrics();
+    } catch {
+      this.popularFabrics = [];
     }
   }
 
@@ -89,6 +138,7 @@ export class EnquiriesPage implements OnInit, OnDestroy {
     try {
       this.selected = await this.enquiryService.update(this.selected.id, { status });
       await this.loadEnquiries();
+      await this.loadPopularFabrics();
       await this.toast('Status updated.', 'success');
     } catch {
       await this.toast('Failed to update status.', 'danger');
@@ -98,8 +148,7 @@ export class EnquiriesPage implements OnInit, OnDestroy {
   }
 
   whatsappUrl(enquiry: EnquiryDetail): string {
-    const message = `Hello ${enquiry.customerName}, thank you for visiting us. About your ${enquiry.garmentType} in ${enquiry.fabricName || 'the fabric you chose'}: `;
-    return `https://wa.me/${enquiry.customerPhone}?text=${encodeURIComponent(message)}`;
+    return `https://wa.me/${enquiry.customerPhone}`;
   }
 
   goBack(): void {

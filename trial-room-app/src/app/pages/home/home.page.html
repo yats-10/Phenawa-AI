@@ -184,7 +184,7 @@
   </div>
 </div>
 
-<!-- Save only the chosen result as a customer enquiry -->
+<!-- Save the fabric choice under a customer, without storing the generated photo -->
 <div class="enquiry-overlay" *ngIf="showEnquiryForm" (click)="!isSavingEnquiry && (showEnquiryForm = false)">
   <div class="enquiry-sheet" (click)="$event.stopPropagation()">
     <div class="enquiry-sheet-header">
@@ -194,12 +194,17 @@
     <p class="enquiry-sheet-subtitle">{{ selectedFabricName || 'Fabric' }} · {{ selectedGarment }}</p>
     <form (ngSubmit)="saveEnquiry()" #enquiryForm="ngForm">
       <label class="enquiry-field">
+        Mobile number
+        <input name="customerPhone" [(ngModel)]="enquiryPhone" (ngModelChange)="onEnquiryPhoneChange($event)" required type="tel" inputmode="tel" placeholder="10-digit mobile number" autocomplete="tel" />
+      </label>
+      <p class="lookup-note" *ngIf="customerLookupState === 'idle'">Enter the full number to find the customer.</p>
+      <p class="lookup-note" *ngIf="customerLookupState === 'checking'">Checking customer...</p>
+      <p class="lookup-note found" *ngIf="customerLookupState === 'found'">Existing customer: {{ existingCustomerName }}</p>
+      <p class="lookup-note" *ngIf="customerLookupState === 'new'">New customer — add their name.</p>
+      <button class="lookup-retry" type="button" *ngIf="customerLookupState === 'error'" (click)="onEnquiryPhoneChange(enquiryPhone)">Could not check number. Tap to retry.</button>
+      <label class="enquiry-field" *ngIf="customerLookupState === 'new'">
         Customer name
         <input name="customerName" [(ngModel)]="enquiryName" required maxlength="100" placeholder="Name" autocomplete="name" />
-      </label>
-      <label class="enquiry-field">
-        Mobile number
-        <input name="customerPhone" [(ngModel)]="enquiryPhone" required type="tel" inputmode="tel" placeholder="10-digit mobile number" autocomplete="tel" />
       </label>
       <div class="enquiry-field">
         Status
@@ -208,17 +213,7 @@
           <button type="button" [class.selected]="enquiryStatus === 'ordered'" (click)="enquiryStatus = 'ordered'">Ordered</button>
         </div>
       </div>
-      <label class="enquiry-field">
-        Estimated price (optional)
-        <input name="estimatedPrice" [(ngModel)]="enquiryPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="₹" />
-      </label>
-      <label class="enquiry-field">
-        Notes (optional)
-        <textarea name="notes" [(ngModel)]="enquiryNotes" maxlength="1000" rows="2" placeholder="Style, size, delivery date..."></textarea>
-      </label>
-      <label class="enquiry-check"><input name="savePreview" type="checkbox" [(ngModel)]="savePreview" /> Customer agrees to save this preview</label>
-      <label class="enquiry-check"><input name="whatsappOptIn" type="checkbox" [(ngModel)]="whatsappOptIn" /> Customer agrees to WhatsApp follow-up</label>
-      <button class="enquiry-submit" type="submit" [disabled]="enquiryForm.invalid || isSavingEnquiry">
+      <button class="enquiry-submit" type="submit" [disabled]="enquiryForm.invalid || isSavingEnquiry || (customerLookupState !== 'found' && customerLookupState !== 'new')">
         {{ isSavingEnquiry ? 'Saving...' : 'Save Enquiry' }}
       </button>
     </form>

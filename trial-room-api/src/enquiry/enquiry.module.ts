@@ -6,11 +6,12 @@ import { Fabric } from '../entities/fabric.entity';
 import { Generation } from '../entities/generation.entity';
 import { User } from '../entities/user.entity';
 import { EnquiryController } from './enquiry.controller';
+import { CustomerController } from './customer.controller';
 import { EnquiryService } from './enquiry.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Customer, Enquiry, Fabric, Generation, User])],
-  controllers: [EnquiryController],
+  controllers: [EnquiryController, CustomerController],
   providers: [EnquiryService],
 })
 export class EnquiryModule {}

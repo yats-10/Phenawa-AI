@@ -88,10 +88,10 @@ export class HomePage implements OnInit, OnDestroy {
   enquiryName = '';
   enquiryPhone = '';
   enquiryStatus: EnquiryStatus = 'interested';
-  enquiryPrice: number | null = null;
-  enquiryNotes = '';
-  whatsappOptIn = false;
-  savePreview = false;
+  customerLookupState: 'idle' | 'checking' | 'found' | 'new' | 'error' = 'idle';
+  existingCustomerName = '';
+  private customerLookupTimer?: ReturnType<typeof setTimeout>;
+  private customerLookupSequence = 0;
 
   // Catalogue modal
   showCatalogueModal = false;
@@ -282,34 +282,69 @@ export class HomePage implements OnInit, OnDestroy {
 
   openEnquiryForm(): void {
     if (!this.resultBase64 || !this.generationId) return;
+    this.clearCustomerLookup();
     this.enquiryName = '';
     this.enquiryPhone = '';
     this.enquiryStatus = 'interested';
-    this.enquiryPrice = null;
-    this.enquiryNotes = '';
-    this.whatsappOptIn = false;
-    this.savePreview = false;
+    this.customerLookupState = 'idle';
+    this.existingCustomerName = '';
     this.showEnquiryForm = true;
   }
 
+  onEnquiryPhoneChange(value: string): void {
+    this.enquiryPhone = value;
+    this.clearCustomerLookup();
+    this.existingCustomerName = '';
+    this.enquiryName = '';
+    const digits = value.replace(/\D/g, '');
+    if (!/^(?:[6-9]\d{9}|0[6-9]\d{9}|91[6-9]\d{9})$/.test(digits)) {
+      this.customerLookupState = 'idle';
+      return;
+    }
+    this.customerLookupState = 'checking';
+    const sequence = this.customerLookupSequence;
+    this.customerLookupTimer = setTimeout(() => {
+      void this.lookupCustomer(value, sequence);
+    }, 350);
+  }
+
+  private async lookupCustomer(phone: string, sequence: number): Promise<void> {
+    try {
+      const result = await this.enquiryService.lookupCustomer(phone);
+      if (sequence !== this.customerLookupSequence) return;
+      if (result.exists && result.customer) {
+        this.customerLookupState = 'found';
+        this.existingCustomerName = result.customer.name;
+      } else {
+        this.customerLookupState = 'new';
+      }
+    } catch {
+      if (sequence === this.customerLookupSequence) this.customerLookupState = 'error';
+    }
+  }
+
+  private clearCustomerLookup(): void {
+    if (this.customerLookupTimer) clearTimeout(this.customerLookupTimer);
+    this.customerLookupSequence++;
+  }
+
   async saveEnquiry(): Promise<void> {
-    if (!this.resultBase64 || !this.generationId || this.isSavingEnquiry) return;
+    if (
+      !this.resultBase64 || !this.generationId || this.isSavingEnquiry ||
+      (this.customerLookupState !== 'found' && this.customerLookupState !== 'new') ||
+      (this.customerLookupState === 'new' && !this.enquiryName.trim())
+    ) return;
     this.isSavingEnquiry = true;
     try {
       const enquiry = await this.enquiryService.create({
         generationId: this.generationId,
-        customerName: this.enquiryName.trim(),
+        customerName: this.customerLookupState === 'new' ? this.enquiryName.trim() : undefined,
         customerPhone: this.enquiryPhone.trim(),
         status: this.enquiryStatus,
-        estimatedPrice: this.enquiryPrice,
-        notes: this.enquiryNotes.trim(),
-        whatsappOptIn: this.whatsappOptIn,
-        savePreview: this.savePreview,
-        resultBase64: this.savePreview ? this.resultBase64 : undefined,
       });
       this.savedEnquiryId = enquiry.id;
       this.showEnquiryForm = false;
-      await this.showToast('Enquiry saved.', 'success');
+      await this.showToast('Saved to customer profile.', 'success');
     } catch (error) {
       const message = error instanceof HttpErrorResponse
         ? error.error?.message ?? 'Failed to save enquiry.'
@@ -447,6 +482,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.clearCustomerLookup();
     this.fabricRouteSubscription?.unsubscribe();
     if (this.loadingInterval) {
       clearInterval(this.loadingInterval);

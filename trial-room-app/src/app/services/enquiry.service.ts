@@ -4,9 +4,11 @@ import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
 import {
   CreateEnquiryRequest,
+  CustomerLookup,
   EnquiryDetail,
   EnquiryStatus,
   EnquirySummary,
+  PopularFabric,
 } from '../models/enquiry.model';
 
 @Injectable({ providedIn: 'root' })
@@ -17,6 +19,15 @@ export class EnquiryService {
 
   create(request: CreateEnquiryRequest): Promise<EnquiryDetail> {
     return firstValueFrom(this.http.post<EnquiryDetail>(this.baseUrl, request));
+  }
+
+  lookupCustomer(phone: string): Promise<CustomerLookup> {
+    const params = new HttpParams().set('phone', phone);
+    return firstValueFrom(this.http.get<CustomerLookup>(`${environment.apiUrl}/customers/lookup`, { params }));
+  }
+
+  popularFabrics(): Promise<PopularFabric[]> {
+    return firstValueFrom(this.http.get<PopularFabric[]>(`${this.baseUrl}/popular-fabrics`));
   }
 
   findAll(status?: EnquiryStatus): Promise<EnquirySummary[]> {
