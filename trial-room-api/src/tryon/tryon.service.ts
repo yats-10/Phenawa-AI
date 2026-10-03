@@ -29,7 +29,7 @@ export class TryonService {
   async generate(
     user: User,
     dto: GenerateDto,
-  ): Promise<{ resultBase64: string }> {
+  ): Promise<{ resultBase64: string; generationId: string; fabricId: string; fabricName: string }> {
     if (!dto.fabricId && !dto.fabricImageBase64) {
       throw new BadRequestException(
         'Provide either fabricId or fabricImageBase64',
@@ -67,6 +67,28 @@ export class TryonService {
       dto.garmentType,
     );
 
+    // A newly photographed swatch joins the shop catalogue after a successful
+    // generation. Reusing the same compressed image does not create duplicates.
+    if (!resolvedFabricId) {
+      let fabric = await this.fabricRepository.findOne({
+        where: { userId: user.id, imageBase64: fabricBase64 },
+      });
+      if (!fabric) {
+        const name = `Fabric ${new Date().toLocaleString('en-IN', {
+          timeZone: 'Asia/Kolkata',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        })}`;
+        fabric = await this.fabricRepository.save(
+          this.fabricRepository.create({ userId: user.id, name, imageBase64: fabricBase64 }),
+        );
+      }
+      resolvedFabricId = fabric.id;
+    }
+
     // Keep usage history without storing a customer's generated photo in SQL.
     const generation = this.generationRepository.create({
       userId: user.id,
@@ -74,12 +96,21 @@ export class TryonService {
       garmentType: dto.garmentType,
       resultBase64: null,
     });
-    await this.generationRepository.save(generation);
+    const savedGeneration = await this.generationRepository.save(generation);
 
     // Check daily count and log warning if needed.
     await this.checkDailyThreshold(user.id);
 
-    return { resultBase64 };
+    const savedFabric = await this.fabricRepository.findOneByOrFail({
+      id: resolvedFabricId,
+      userId: user.id,
+    });
+    return {
+      resultBase64,
+      generationId: savedGeneration.id,
+      fabricId: savedFabric.id,
+      fabricName: savedFabric.name,
+    };
   }
 
   async getTotalCount(userId: string): Promise<number> {

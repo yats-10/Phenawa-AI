@@ -10,7 +10,11 @@ import { User } from './entities/user.entity';
 import { Fabric } from './entities/fabric.entity';
 import { Generation } from './entities/generation.entity';
 import { Admin } from './entities/admin.entity';
+import { Customer } from './entities/customer.entity';
+import { Enquiry } from './entities/enquiry.entity';
 import { InitialSchema1790888855452 } from './migrations/1790888855452-InitialSchema';
+import { CustomerEnquiries1791000000000 } from './migrations/1791000000000-CustomerEnquiries';
+import { EnquiryModule } from './enquiry/enquiry.module';
 import { buildDatabaseSsl } from './config/ssl';
 import jwtConfig from './config/jwt.config';
 
@@ -29,11 +33,11 @@ import jwtConfig from './config/jwt.config';
         return {
           type: 'postgres' as const,
           url: databaseUrl,
-          entities: [User, Fabric, Generation, Admin],
+          entities: [User, Fabric, Generation, Admin, Customer, Enquiry],
           // Schema is owned by migrations in every environment, so the same
           // SQL that was reviewed locally is what runs in production.
           synchronize: false,
-          migrations: [InitialSchema1790888855452],
+          migrations: [InitialSchema1790888855452, CustomerEnquiries1791000000000],
           migrationsRun: true,
           ssl: buildDatabaseSsl(
             databaseUrl,
@@ -47,6 +51,7 @@ import jwtConfig from './config/jwt.config';
     AdminModule,
     TryonModule,
     FabricModule,
+    EnquiryModule,
   ],
   controllers: [HealthController],
 })

@@ -111,7 +111,9 @@ export class CataloguePage implements OnInit {
           text: 'Use in Try-On',
           icon: 'color-palette-outline',
           handler: () => {
-            void this.router.navigate(['/home']);
+            void this.router.navigate(['/home'], {
+              queryParams: { fabricId: fabric.id },
+            });
           },
         },
         {

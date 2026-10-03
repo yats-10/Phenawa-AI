@@ -1,0 +1,65 @@
+<ion-content class="enquiries-content" [fullscreen]="true">
+  <div class="page-header">
+    <button class="back-btn" (click)="goBack()">← Back</button>
+    <h1>Customer Enquiries</h1>
+    <span></span>
+  </div>
+
+  <div class="page-body">
+    <div class="filter-row" aria-label="Filter enquiries">
+      <button [class.active]="filter === 'all'" (click)="setFilter('all')">All</button>
+      <button [class.active]="filter === 'interested'" (click)="setFilter('interested')">Interested</button>
+      <button [class.active]="filter === 'ordered'" (click)="setFilter('ordered')">Ordered</button>
+    </div>
+
+    <p class="loading-note" *ngIf="isLoading">Loading enquiries...</p>
+    <div class="empty-state" *ngIf="!isLoading && enquiries.length === 0">
+      <span>👥</span>
+      <h2>No enquiries yet</h2>
+      <p>Save an enquiry after a try-on to see it here.</p>
+    </div>
+
+    <button class="enquiry-card" *ngFor="let enquiry of enquiries" (click)="openDetail(enquiry.id)">
+      <div class="card-top">
+        <strong>{{ enquiry.customerName }}</strong>
+        <span class="status" [class.ordered]="enquiry.status === 'ordered'">{{ enquiry.status | titlecase }}</span>
+      </div>
+      <span class="card-sub">{{ enquiry.garmentType }} · {{ enquiry.fabricName || 'Fabric' }}</span>
+      <span class="card-bottom">{{ enquiry.createdAt | date:'dd MMM yyyy' }}<span *ngIf="enquiry.estimatedPrice !== null"> · ₹{{ enquiry.estimatedPrice }}</span></span>
+    </button>
+  </div>
+</ion-content>
+
+<div class="detail-overlay" *ngIf="selected" (click)="closeDetail()">
+  <div class="detail-sheet" (click)="$event.stopPropagation()">
+    <div class="detail-header">
+      <div><h2>{{ selected.customerName }}</h2><p>+{{ selected.customerPhone }}</p></div>
+      <button type="button" (click)="closeDetail()" aria-label="Close">✕</button>
+    </div>
+
+    <img *ngIf="selected.resultBase64" class="result-preview" [src]="'data:image/jpeg;base64,' + selected.resultBase64" alt="Saved try-on preview" />
+    <img *ngIf="!selected.resultBase64 && selected.fabricImageBase64" class="fabric-preview" [src]="'data:image/jpeg;base64,' + selected.fabricImageBase64" alt="Selected fabric" />
+    <p class="preview-note" *ngIf="!selected.resultBase64">The try-on image was not saved for this enquiry.</p>
+
+    <div class="detail-row"><span>Status</span><strong>{{ selected.status | titlecase }}</strong></div>
+    <div class="detail-row"><span>Garment</span><strong>{{ selected.garmentType }}</strong></div>
+    <div class="detail-row"><span>Fabric</span><strong>{{ selected.fabricName || 'Fabric removed' }}</strong></div>
+    <div class="detail-row"><span>Created</span><strong>{{ selected.createdAt | date:'dd MMM yyyy, h:mm a' }}</strong></div>
+    <div class="detail-row" *ngIf="selected.estimatedPrice !== null"><span>Estimated price</span><strong>₹{{ selected.estimatedPrice }}</strong></div>
+    <div class="notes" *ngIf="selected.notes"><span>Notes</span><p>{{ selected.notes }}</p></div>
+
+    <div class="detail-actions">
+      <button *ngIf="selected.status === 'interested'" (click)="changeStatus('ordered')" [disabled]="isUpdating">Mark Ordered</button>
+      <button *ngIf="selected.status === 'ordered'" (click)="changeStatus('interested')" [disabled]="isUpdating">Mark Interested</button>
+      <a *ngIf="selected.whatsappOptIn" [href]="whatsappUrl(selected)" target="_blank" rel="noopener noreferrer">WhatsApp</a>
+    </div>
+    <p class="consent-note" *ngIf="!selected.whatsappOptIn">WhatsApp follow-up was not agreed to for this customer.</p>
+
+    <div class="history" *ngIf="selected.customerHistory.length > 1">
+      <h3>Other enquiries from this customer</h3>
+      <button *ngFor="let item of selected.customerHistory" [hidden]="item.id === selected.id" (click)="openDetail(item.id)">
+        {{ item.garmentType }} · {{ item.fabricName || 'Fabric' }} <span>{{ item.status | titlecase }}</span>
+      </button>
+    </div>
+  </div>
+</div>

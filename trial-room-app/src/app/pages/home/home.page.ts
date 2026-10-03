@@ -1,6 +1,8 @@
 import { Component, OnInit, OnDestroy, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router } from '@angular/router';
+import { FormsModule } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import {
   IonHeader,
   IonToolbar,
@@ -34,7 +36,8 @@ import { TryonService } from '../../services/tryon.service';
 import { AuthService } from '../../services/auth.service';
 import { FabricService } from '../../services/fabric.service';
 import { ImageService } from '../../services/image.service';
-import { PhotoGalleryService } from '../../services/photo-gallery.service';
+import { EnquiryService } from '../../services/enquiry.service';
+import { EnquiryStatus } from '../../models/enquiry.model';
 import { Fabric } from '../../models/fabric.model';
 import { HttpErrorResponse } from '@angular/common/http';
 
@@ -52,6 +55,7 @@ interface GarmentOption {
   standalone: true,
   imports: [
     CommonModule,
+    FormsModule,
     ImageUploadComponent,
     LoadingOverlayComponent,
     GarmentSelectorComponent,
@@ -77,6 +81,17 @@ export class HomePage implements OnInit, OnDestroy {
 
   isLoading = false;
   resultBase64: string | null = null;
+  generationId: string | null = null;
+  savedEnquiryId: string | null = null;
+  showEnquiryForm = false;
+  isSavingEnquiry = false;
+  enquiryName = '';
+  enquiryPhone = '';
+  enquiryStatus: EnquiryStatus = 'interested';
+  enquiryPrice: number | null = null;
+  enquiryNotes = '';
+  whatsappOptIn = false;
+  savePreview = false;
 
   // Catalogue modal
   showCatalogueModal = false;
@@ -101,6 +116,7 @@ export class HomePage implements OnInit, OnDestroy {
     'Adding final touches...',
   ];
   private loadingMsgIndex = 0;
+  private fabricRouteSubscription?: Subscription;
   private loadingInterval = setInterval(() => {
     this.loadingMsgIndex = (this.loadingMsgIndex + 1) % this.loadingMessages.length;
     this.loadingMessage = this.loadingMessages[this.loadingMsgIndex]!;
@@ -131,9 +147,10 @@ export class HomePage implements OnInit, OnDestroy {
     private readonly authService: AuthService,
     private readonly fabricService: FabricService,
     private readonly imageService: ImageService,
-    private readonly photoGalleryService: PhotoGalleryService,
+    private readonly enquiryService: EnquiryService,
     private readonly toastCtrl: ToastController,
     private readonly router: Router,
+    private readonly route: ActivatedRoute,
   ) {
     addIcons({
       sparklesOutline,
@@ -147,8 +164,26 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   async ngOnInit(): Promise<void> {
+    this.fabricRouteSubscription = this.route.queryParamMap.subscribe((params) => {
+      const fabricId = params.get('fabricId');
+      if (fabricId) void this.selectCatalogueFabricById(fabricId);
+    });
     const info = await this.authService.getShopInfo();
     if (info) this.shopName = info.shopName;
+  }
+
+  private async selectCatalogueFabricById(fabricId: string): Promise<void> {
+    try {
+      const fabrics = await this.fabricService.getAll();
+      const fabric = fabrics.find((item) => item.id === fabricId);
+      if (!fabric) {
+        await this.showToast('Fabric not found in your catalogue.', 'danger');
+        return;
+      }
+      this.handleCatalogueSelect(fabric);
+    } catch {
+      await this.showToast('Failed to load fabric.', 'danger');
+    }
   }
 
   get canGenerate(): boolean {
@@ -210,6 +245,8 @@ export class HomePage implements OnInit, OnDestroy {
 
     this.isLoading = true;
     this.resultBase64 = null;
+    this.generationId = null;
+    this.savedEnquiryId = null;
 
     try {
       const response = await this.tryonService.generate({
@@ -222,6 +259,10 @@ export class HomePage implements OnInit, OnDestroy {
       });
 
       this.resultBase64 = response.resultBase64;
+      this.generationId = response.generationId;
+      this.selectedFabricId = response.fabricId;
+      this.selectedFabricName = response.fabricName;
+      this.fabricImageBase64 = '';
       this.todayCount++;
     } catch (error) {
       let message = 'Something went wrong. Please try again.';
@@ -239,16 +280,43 @@ export class HomePage implements OnInit, OnDestroy {
     }
   }
 
-  async saveToGallery(): Promise<void> {
-    if (!this.resultBase64) return;
+  openEnquiryForm(): void {
+    if (!this.resultBase64 || !this.generationId) return;
+    this.enquiryName = '';
+    this.enquiryPhone = '';
+    this.enquiryStatus = 'interested';
+    this.enquiryPrice = null;
+    this.enquiryNotes = '';
+    this.whatsappOptIn = false;
+    this.savePreview = false;
+    this.showEnquiryForm = true;
+  }
+
+  async saveEnquiry(): Promise<void> {
+    if (!this.resultBase64 || !this.generationId || this.isSavingEnquiry) return;
+    this.isSavingEnquiry = true;
     try {
-      const destination = await this.photoGalleryService.save(this.resultBase64);
-      await this.showToast(
-        destination === 'gallery' ? 'Image saved to gallery!' : 'Image downloaded!',
-        'success',
-      );
-    } catch {
-      await this.showToast('Failed to save image.', 'danger');
+      const enquiry = await this.enquiryService.create({
+        generationId: this.generationId,
+        customerName: this.enquiryName.trim(),
+        customerPhone: this.enquiryPhone.trim(),
+        status: this.enquiryStatus,
+        estimatedPrice: this.enquiryPrice,
+        notes: this.enquiryNotes.trim(),
+        whatsappOptIn: this.whatsappOptIn,
+        savePreview: this.savePreview,
+        resultBase64: this.savePreview ? this.resultBase64 : undefined,
+      });
+      this.savedEnquiryId = enquiry.id;
+      this.showEnquiryForm = false;
+      await this.showToast('Enquiry saved.', 'success');
+    } catch (error) {
+      const message = error instanceof HttpErrorResponse
+        ? error.error?.message ?? 'Failed to save enquiry.'
+        : 'Failed to save enquiry.';
+      await this.showToast(Array.isArray(message) ? message.join(' ') : message, 'danger');
+    } finally {
+      this.isSavingEnquiry = false;
     }
   }
 
@@ -273,6 +341,9 @@ export class HomePage implements OnInit, OnDestroy {
 
   newTry(): void {
     this.resultBase64 = null;
+    this.generationId = null;
+    this.savedEnquiryId = null;
+    this.showEnquiryForm = false;
     this.personImageBase64 = '';
     this.fabricImageBase64 = '';
     this.selectedFabricId = null;
@@ -281,6 +352,17 @@ export class HomePage implements OnInit, OnDestroy {
 
   goToCatalogue(): void {
     void this.router.navigate(['/catalogue']);
+  }
+
+  goToEnquiries(): void {
+    void this.router.navigate(['/enquiries']);
+  }
+
+  viewSavedEnquiry(): void {
+    if (!this.savedEnquiryId) return;
+    void this.router.navigate(['/enquiries'], {
+      queryParams: { id: this.savedEnquiryId },
+    });
   }
 
   goToProfile(): void {
@@ -365,6 +447,7 @@ export class HomePage implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.fabricRouteSubscription?.unsubscribe();
     if (this.loadingInterval) {
       clearInterval(this.loadingInterval);
     }

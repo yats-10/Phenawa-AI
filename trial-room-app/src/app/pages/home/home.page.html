@@ -12,6 +12,9 @@
     <button class="menu-item" (click)="goToCatalogue(); menuOpen = false">
       <span class="menu-icon">📚</span><span>Catalogue</span>
     </button>
+    <button class="menu-item" (click)="goToEnquiries(); menuOpen = false">
+      <span class="menu-icon">👥</span><span>Enquiries</span>
+    </button>
     <button class="menu-item" (click)="goToProfile(); menuOpen = false">
       <span class="menu-icon">👤</span><span>Profile</span>
     </button>
@@ -139,7 +142,8 @@
         <span class="tap-hint">Tap image to enlarge</span>
       </div>
       <div class="result-actions">
-        <button class="action-btn" (click)="saveToGallery()">💾 Save</button>
+        <button class="action-btn primary-action" *ngIf="!savedEnquiryId" (click)="openEnquiryForm()">💾 Save Enquiry</button>
+        <button class="action-btn primary-action" *ngIf="savedEnquiryId" (click)="viewSavedEnquiry()">👤 View Enquiry</button>
         <button class="action-btn" (click)="shareResult()">📤 Share</button>
         <button class="action-btn" (click)="resetAll()">🔄 New Try</button>
       </div>
@@ -149,7 +153,7 @@
     <div class="spacer"></div>
 
     <!-- Section 3: Try It On Button (sticky at bottom) -->
-    <button class="try-btn" [disabled]="!canGenerate" (click)="generate()">
+    <button class="try-btn" *ngIf="!resultBase64" [disabled]="!canGenerate" (click)="generate()">
       ✨ Try It On
     </button>
   </div>
@@ -177,6 +181,47 @@
         <p>No fabrics saved yet. Add fabrics in the Catalogue page.</p>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- Save only the chosen result as a customer enquiry -->
+<div class="enquiry-overlay" *ngIf="showEnquiryForm" (click)="!isSavingEnquiry && (showEnquiryForm = false)">
+  <div class="enquiry-sheet" (click)="$event.stopPropagation()">
+    <div class="enquiry-sheet-header">
+      <h2>Save Enquiry</h2>
+      <button type="button" (click)="showEnquiryForm = false" [disabled]="isSavingEnquiry" aria-label="Close">✕</button>
+    </div>
+    <p class="enquiry-sheet-subtitle">{{ selectedFabricName || 'Fabric' }} · {{ selectedGarment }}</p>
+    <form (ngSubmit)="saveEnquiry()" #enquiryForm="ngForm">
+      <label class="enquiry-field">
+        Customer name
+        <input name="customerName" [(ngModel)]="enquiryName" required maxlength="100" placeholder="Name" autocomplete="name" />
+      </label>
+      <label class="enquiry-field">
+        Mobile number
+        <input name="customerPhone" [(ngModel)]="enquiryPhone" required type="tel" inputmode="tel" placeholder="10-digit mobile number" autocomplete="tel" />
+      </label>
+      <div class="enquiry-field">
+        Status
+        <div class="enquiry-status-row">
+          <button type="button" [class.selected]="enquiryStatus === 'interested'" (click)="enquiryStatus = 'interested'">Interested</button>
+          <button type="button" [class.selected]="enquiryStatus === 'ordered'" (click)="enquiryStatus = 'ordered'">Ordered</button>
+        </div>
+      </div>
+      <label class="enquiry-field">
+        Estimated price (optional)
+        <input name="estimatedPrice" [(ngModel)]="enquiryPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="₹" />
+      </label>
+      <label class="enquiry-field">
+        Notes (optional)
+        <textarea name="notes" [(ngModel)]="enquiryNotes" maxlength="1000" rows="2" placeholder="Style, size, delivery date..."></textarea>
+      </label>
+      <label class="enquiry-check"><input name="savePreview" type="checkbox" [(ngModel)]="savePreview" /> Customer agrees to save this preview</label>
+      <label class="enquiry-check"><input name="whatsappOptIn" type="checkbox" [(ngModel)]="whatsappOptIn" /> Customer agrees to WhatsApp follow-up</label>
+      <button class="enquiry-submit" type="submit" [disabled]="enquiryForm.invalid || isSavingEnquiry">
+        {{ isSavingEnquiry ? 'Saving...' : 'Save Enquiry' }}
+      </button>
+    </form>
   </div>
 </div>
 

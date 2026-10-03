@@ -16,4 +16,7 @@ export interface GenerateRequest {
 
 export interface GenerateResponse {
   resultBase64: string;
+  generationId: string;
+  fabricId: string;
+  fabricName: string;
 }

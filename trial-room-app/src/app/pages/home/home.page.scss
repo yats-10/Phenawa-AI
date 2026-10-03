@@ -522,9 +522,9 @@ ion-content {
 
 .result-actions {
   padding: 16px;
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  justify-content: center;
 }
 
 .action-btn {
@@ -544,6 +544,108 @@ ion-content {
   &:hover {
     background: #EEEEEE;
   }
+}
+
+.primary-action {
+  grid-column: 1 / -1;
+  min-height: 48px;
+  background: #FF8C00;
+  border-color: #FF8C00;
+  color: white;
+
+  &:hover { background: #E67E00; }
+}
+
+.enquiry-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10002;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.enquiry-sheet {
+  width: 100%;
+  max-width: 520px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+  background: white;
+  border-radius: 22px 22px 0 0;
+  padding: 22px 20px calc(24px + env(safe-area-inset-bottom));
+}
+
+.enquiry-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  h2 { margin: 0; font-size: 20px; color: #222; }
+  button { border: 0; background: #f1f1f1; border-radius: 50%; width: 32px; height: 32px; }
+}
+
+.enquiry-sheet-subtitle { margin: 6px 0 20px; color: #777; font-size: 13px; }
+
+.enquiry-sheet form { display: flex; flex-direction: column; gap: 15px; }
+
+.enquiry-field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #444;
+
+  input, textarea {
+    box-sizing: border-box;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fff;
+    color: #222;
+    font: 400 15px 'DM Sans', sans-serif;
+  }
+}
+
+.enquiry-status-row {
+  display: flex;
+  gap: 10px;
+
+  button {
+    flex: 1;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 12px;
+    background: #fff;
+    color: #444;
+    font: 600 14px 'DM Sans', sans-serif;
+  }
+
+  button.selected { border-color: #FF8C00; background: #FFF3E5; color: #9A5100; }
+}
+
+.enquiry-check {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: #555;
+
+  input { width: 18px; height: 18px; flex: none; accent-color: #FF8C00; }
+}
+
+.enquiry-submit {
+  border: none;
+  border-radius: 12px;
+  background: #FF8C00;
+  color: white;
+  min-height: 48px;
+  font: 600 16px 'DM Sans', sans-serif;
+
+  &:disabled { background: #ddd; color: #999; }
 }
 
 // Loading Overlay
