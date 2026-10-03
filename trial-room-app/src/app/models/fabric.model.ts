@@ -4,6 +4,8 @@ export interface Fabric {
   name: string;
   imageBase64: string;
   createdAt: string;
+  interestedCount: number;
+  orderedCount: number;
 }
 
 export interface CreateFabricRequest {

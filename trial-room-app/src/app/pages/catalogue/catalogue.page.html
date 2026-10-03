@@ -7,6 +7,12 @@
     <button class="add-btn" (click)="openAddModal()">＋ Add</button>
   </div>
 
+  <div class="sort-row" *ngIf="!isLoading && fabrics.length > 0" aria-label="Sort fabrics">
+    <span>Sort by</span>
+    <button type="button" [class.active]="sortBy === 'recent'" (click)="sortBy = 'recent'">Date added</button>
+    <button type="button" [class.active]="sortBy === 'popular'" (click)="sortBy = 'popular'">Popular</button>
+  </div>
+
   <!-- Loading -->
   <div class="loading-center" *ngIf="isLoading">
     <div class="spinner"></div>
@@ -24,12 +30,14 @@
   <div class="fabric-grid" *ngIf="!isLoading && fabrics.length > 0">
     <div
       class="fabric-card"
-      *ngFor="let fabric of fabrics"
+      *ngFor="let fabric of sortedFabrics"
       (click)="showFabricOptions(fabric)"
     >
       <img [src]="'data:image/jpeg;base64,' + fabric.imageBase64" [alt]="fabric.name" class="fabric-img" />
+      <span class="popular-badge" *ngIf="fabric.id === topPopularFabricId">★ Most popular</span>
       <div class="fabric-info">
         <p class="fabric-name">{{ fabric.name }}</p>
+        <p class="fabric-stats"><span>{{ fabric.interestedCount }} interested</span><span>{{ fabric.orderedCount }} ordered</span></p>
         <p class="fabric-date">{{ fabric.createdAt | date:'mediumDate' }}</p>
       </div>
     </div>
@@ -78,6 +86,25 @@
         (click)="saveFabric()"
       >
         {{ isSaving ? 'Saving...' : 'Save Fabric' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Rename Fabric Overlay -->
+<div class="modal-overlay" *ngIf="showRenameModal" (click)="closeRenameModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header">
+      <h2 class="modal-title">Rename Fabric</h2>
+      <button class="modal-close" type="button" (click)="closeRenameModal()" aria-label="Close">✕</button>
+    </div>
+    <div class="add-form">
+      <div class="input-group">
+        <label class="input-label" for="rename-fabric-name">Fabric Name</label>
+        <input id="rename-fabric-name" class="text-input" type="text" maxlength="100" [(ngModel)]="renameFabricName" (keyup.enter)="saveRename()" />
+      </div>
+      <button class="save-btn" type="button" [disabled]="!renameFabricName.trim() || isRenaming" (click)="saveRename()">
+        {{ isRenaming ? 'Saving...' : 'Save Name' }}
       </button>
     </div>
   </div>

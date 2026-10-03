@@ -22,6 +22,12 @@ export class FabricService {
     );
   }
 
+  async rename(id: string, name: string): Promise<Fabric> {
+    return firstValueFrom(
+      this.http.patch<Fabric>(`${this.baseUrl}/fabrics/${id}`, { name }),
+    );
+  }
+
   async delete(id: string): Promise<void> {
     await firstValueFrom(
       this.http.delete(`${this.baseUrl}/fabrics/${id}`),

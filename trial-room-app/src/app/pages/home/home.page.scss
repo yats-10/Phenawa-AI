@@ -56,6 +56,19 @@ ion-content {
   gap: 4px;
 }
 
+.menu-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.menu-brand-icon {
+  display: block;
+  width: 32px;
+  height: 32px;
+  flex: none;
+}
+
 .menu-app-name {
   font-size: 20px;
   font-weight: 600;
@@ -138,12 +151,27 @@ ion-content {
   justify-content: center;
 }
 
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.app-brand-icon {
+  display: block;
+  width: 28px;
+  height: 28px;
+  flex: none;
+}
+
 .app-name {
   font-size: 18px;
   font-weight: 600;
   color: #222222;
   letter-spacing: -0.3px;
-  flex: 1;
+  white-space: nowrap;
 }
 
 .shop-name {
@@ -151,6 +179,9 @@ ion-content {
   color: #999999;
   font-weight: 400;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 35%;
 }
 
 // Page Layout

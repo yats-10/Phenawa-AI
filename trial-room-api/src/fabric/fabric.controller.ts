@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Delete,
+  Patch,
   Body,
   Param,
   UseGuards,
@@ -12,6 +13,7 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../entities/user.entity';
 import { CreateFabricDto } from './dto/create-fabric.dto';
+import { RenameFabricDto } from './dto/rename-fabric.dto';
 
 @Controller('fabrics')
 @UseGuards(JwtAuthGuard)
@@ -38,5 +40,14 @@ export class FabricController {
   ) {
     await this.fabricService.remove(user, id);
     return { message: 'Fabric deleted' };
+  }
+
+  @Patch(':id')
+  async rename(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() dto: RenameFabricDto,
+  ) {
+    return this.fabricService.rename(user, id, dto.name);
   }
 }

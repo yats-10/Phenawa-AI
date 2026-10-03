@@ -107,6 +107,31 @@
   }
 }
 
+.sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 20px 0;
+  color: #666;
+  font-size: 13px;
+
+  button {
+    border: 1px solid #ddd;
+    background: white;
+    color: #555;
+    border-radius: 10px;
+    padding: 8px 12px;
+    font: 600 13px 'DM Sans', sans-serif;
+    cursor: pointer;
+  }
+
+  button.active {
+    border-color: #FF8C00;
+    background: #FF8C00;
+    color: white;
+  }
+}
+
 .fabric-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -119,6 +144,7 @@
   }
 
   .fabric-card {
+    position: relative;
     border-radius: 16px;
     background: white;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
@@ -134,6 +160,19 @@
       width: 100%;
       height: 140px;
       object-fit: cover;
+    }
+
+    .popular-badge {
+      position: absolute;
+      top: 9px;
+      left: 9px;
+      padding: 5px 8px;
+      border-radius: 8px;
+      background: #FF8C00;
+      color: white;
+      font-size: 11px;
+      font-weight: 600;
+      box-shadow: 0 2px 7px rgba(0, 0, 0, 0.2);
     }
 
     .fabric-info {
@@ -153,6 +192,16 @@
         font-size: 12px;
         color: #999999;
         margin: 0;
+      }
+
+      .fabric-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 8px;
+        margin: 6px 0 4px;
+        color: #875000;
+        font-size: 11px;
+        font-weight: 600;
       }
     }
   }

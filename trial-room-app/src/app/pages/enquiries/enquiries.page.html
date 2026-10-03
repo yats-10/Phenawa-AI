@@ -6,15 +6,6 @@
   </div>
 
   <div class="page-body">
-    <div class="popular-card" *ngIf="popularFabrics.length > 0">
-      <h2>Most popular fabrics</h2>
-      <div class="popular-row" *ngFor="let fabric of popularFabrics; let rank = index">
-        <span class="popular-rank">{{ rank + 1 }}</span>
-        <span class="popular-name">{{ fabric.fabricName }}</span>
-        <span class="popular-count">{{ fabric.customers }} {{ fabric.customers === 1 ? 'customer' : 'customers' }}</span>
-      </div>
-    </div>
-
     <div class="filter-row" aria-label="Filter enquiries">
       <button [class.active]="filter === 'all'" (click)="setFilter('all')">All</button>
       <button [class.active]="filter === 'interested'" (click)="setFilter('interested')">Interested</button>

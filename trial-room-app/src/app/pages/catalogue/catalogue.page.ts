@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -23,11 +23,16 @@ import { Fabric } from '../../models/fabric.model';
     IonContent,
   ],
 })
-export class CataloguePage implements OnInit {
+export class CataloguePage {
   readonly CameraSource = CameraSource;
 
   fabrics: Fabric[] = [];
   isLoading = false;
+  sortBy: 'recent' | 'popular' = 'recent';
+  showRenameModal = false;
+  renamingFabric: Fabric | null = null;
+  renameFabricName = '';
+  isRenaming = false;
 
   // Add fabric modal
   showAddModal = false;
@@ -44,8 +49,27 @@ export class CataloguePage implements OnInit {
     private readonly router: Router,
   ) {}
 
-  async ngOnInit(): Promise<void> {
+  async ionViewWillEnter(): Promise<void> {
     await this.loadFabrics();
+  }
+
+  get sortedFabrics(): Fabric[] {
+    return [...this.fabrics].sort((a, b) => this.compareFabrics(a, b, this.sortBy));
+  }
+
+  get topPopularFabricId(): string | null {
+    const top = [...this.fabrics].sort((a, b) => this.compareFabrics(a, b, 'popular'))[0];
+    return top && top.interestedCount + top.orderedCount > 0 ? top.id : null;
+  }
+
+  private compareFabrics(a: Fabric, b: Fabric, sortBy: 'recent' | 'popular'): number {
+    if (sortBy === 'popular') {
+      const aTotal = a.interestedCount + a.orderedCount;
+      const bTotal = b.interestedCount + b.orderedCount;
+      if (aTotal !== bTotal) return bTotal - aTotal;
+      if (a.orderedCount !== b.orderedCount) return b.orderedCount - a.orderedCount;
+    }
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
   }
 
   async loadFabrics(): Promise<void> {
@@ -93,7 +117,7 @@ export class CataloguePage implements OnInit {
         name: this.newFabricName.trim(),
         imageBase64: this.newFabricBase64,
       });
-      this.fabrics.unshift(fabric);
+      this.fabrics.unshift({ ...fabric, interestedCount: 0, orderedCount: 0 });
       this.showAddModal = false;
       await this.showToast('Fabric added!', 'success');
     } catch {
@@ -117,6 +141,11 @@ export class CataloguePage implements OnInit {
           },
         },
         {
+          text: 'Rename',
+          icon: 'create-outline',
+          handler: () => this.openRenameModal(fabric),
+        },
+        {
           text: 'Delete',
           icon: 'trash-outline',
           role: 'destructive',
@@ -131,6 +160,37 @@ export class CataloguePage implements OnInit {
       ],
     });
     await actionSheet.present();
+  }
+
+  openRenameModal(fabric: Fabric): void {
+    this.renamingFabric = fabric;
+    this.renameFabricName = fabric.name;
+    this.showRenameModal = true;
+  }
+
+  closeRenameModal(): void {
+    if (this.isRenaming) return;
+    this.showRenameModal = false;
+    this.renamingFabric = null;
+  }
+
+  async saveRename(): Promise<void> {
+    const name = this.renameFabricName.trim();
+    if (!this.renamingFabric || !name || this.isRenaming) return;
+    this.isRenaming = true;
+    try {
+      const updated = await this.fabricService.rename(this.renamingFabric.id, name);
+      this.fabrics = this.fabrics.map((fabric) =>
+        fabric.id === updated.id ? { ...fabric, name: updated.name } : fabric,
+      );
+      this.showRenameModal = false;
+      this.renamingFabric = null;
+      await this.showToast('Fabric renamed.', 'success');
+    } catch {
+      await this.showToast('Failed to rename fabric.', 'danger');
+    } finally {
+      this.isRenaming = false;
+    }
   }
 
   async deleteFabric(fabric: Fabric): Promise<void> {

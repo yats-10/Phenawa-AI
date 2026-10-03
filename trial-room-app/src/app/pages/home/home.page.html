@@ -2,7 +2,10 @@
 <div class="menu-backdrop" *ngIf="menuOpen" (click)="menuOpen = false"></div>
 <div class="side-menu" [class.open]="menuOpen">
   <div class="menu-header">
-    <span class="menu-app-name">Phenawa AI</span>
+    <div class="menu-brand">
+      <img src="assets/brand/northkind-icon-purple.svg" alt="" aria-hidden="true" class="menu-brand-icon" />
+      <span class="menu-app-name">Trial Room</span>
+    </div>
     <span class="menu-shop">{{ shopName }}</span>
   </div>
   <div class="menu-items">
@@ -28,7 +31,10 @@
   <ion-toolbar>
     <div class="toolbar-content">
       <button class="hamburger-btn" (click)="menuOpen = !menuOpen">☰</button>
-      <span class="app-name">Phenawa AI</span>
+      <div class="app-brand">
+        <img src="assets/brand/northkind-icon-purple.svg" alt="" aria-hidden="true" class="app-brand-icon" />
+        <span class="app-name">Trial Room</span>
+      </div>
       <span class="shop-name" *ngIf="shopName">{{ shopName }}</span>
     </div>
   </ion-toolbar>

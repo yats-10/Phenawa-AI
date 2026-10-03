@@ -3,7 +3,7 @@ import { Component, OnDestroy, OnInit } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { IonContent, ToastController } from '@ionic/angular/standalone';
 import { Subscription } from 'rxjs';
-import { EnquiryDetail, EnquiryStatus, EnquirySummary, PopularFabric } from '../../models/enquiry.model';
+import { EnquiryDetail, EnquiryStatus, EnquirySummary } from '../../models/enquiry.model';
 import { EnquiryService } from '../../services/enquiry.service';
 
 type Filter = 'all' | EnquiryStatus;
@@ -28,7 +28,6 @@ interface CustomerCard {
 export class EnquiriesPage implements OnInit, OnDestroy {
   filter: Filter = 'all';
   enquiries: EnquirySummary[] = [];
-  popularFabrics: PopularFabric[] = [];
   selected: EnquiryDetail | null = null;
   isLoading = false;
   isUpdating = false;
@@ -50,7 +49,6 @@ export class EnquiriesPage implements OnInit, OnDestroy {
 
   ionViewWillEnter(): void {
     void this.loadEnquiries();
-    void this.loadPopularFabrics();
   }
 
   get customers(): CustomerCard[] {
@@ -104,14 +102,6 @@ export class EnquiriesPage implements OnInit, OnDestroy {
     }
   }
 
-  async loadPopularFabrics(): Promise<void> {
-    try {
-      this.popularFabrics = await this.enquiryService.popularFabrics();
-    } catch {
-      this.popularFabrics = [];
-    }
-  }
-
   async openDetail(id: string): Promise<void> {
     try {
       this.selected = await this.enquiryService.findOne(id);
@@ -138,7 +128,6 @@ export class EnquiriesPage implements OnInit, OnDestroy {
     try {
       this.selected = await this.enquiryService.update(this.selected.id, { status });
       await this.loadEnquiries();
-      await this.loadPopularFabrics();
       await this.toast('Status updated.', 'success');
     } catch {
       await this.toast('Failed to update status.', 'danger');
